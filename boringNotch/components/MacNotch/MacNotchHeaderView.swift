@@ -135,8 +135,7 @@ struct MacNotchHeaderView: View {
                     Image("logo")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 14, height: 14)
-                        .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
+                        .frame(width: 15, height: 15)
                         .shadow(color: Color(red: 0.5, green: 0.6, blue: 1.0).opacity(0.45), radius: 2.5)
 
                     Text("Orbito")

@@ -854,8 +854,7 @@ struct About: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 72, height: 72)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .shadow(color: Color(red: 0.5, green: 0.6, blue: 1.0).opacity(0.35), radius: 10, x: 0, y: 2)
 
                     Text("Orbito")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
