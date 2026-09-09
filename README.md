@@ -77,11 +77,28 @@ Directly tap into macOS Mach kernel APIs and hardware telemetry without heavy ba
 
 ---
 
-## 🚀 Getting Started
+## 📥 Download & Installation
+
+1. **Download the latest release**:
+   Grab **`Orbito.dmg`** from the [GitHub Releases](https://github.com/Naivedhyajain20/Orbito/releases) page.
+
+2. **Install**:
+   Open `Orbito.dmg` and drag **Orbito** into your `/Applications` folder.
+
+3. **First-Time Launch (Gatekeeper)**:
+   Because Orbito is independently built without a paid Apple Developer certificate, macOS may show a security notice on first launch. To bypass this instantly, run this one-line command in Terminal:
+   ```bash
+   xattr -cr /Applications/Orbito.app
+   ```
+   Then double-click **Orbito** in Applications to launch!
+
+---
+
+## 🚀 Building from Source
 
 ### System Requirements
 - **macOS**: macOS 14.0 Sonoma or macOS 15.0+ Sequoia (Apple Silicon & Intel)
-- **Xcode**: 15.0 or later (for building from source)
+- **Xcode**: 15.0 or later
 - **Swift**: 5.9+
 
 ### Building from Source
