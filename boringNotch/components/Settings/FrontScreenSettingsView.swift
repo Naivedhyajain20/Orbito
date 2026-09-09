@@ -128,9 +128,15 @@ struct FrontScreenSettingsView: View {
                                 .foregroundColor(.cyan)
                             Text("Apple Liquid Glass — Translucent frosted material with depth gradients and delicate rim highlight.")
                         }
-                    case .darkSolid:
+                    case .darkBlack:
                         HStack(spacing: 6) {
                             Image(systemName: "circle.fill")
+                                .foregroundColor(.black)
+                            Text("Pure OLED Dark Black — 100% deep pitch-black background with zero translucent glow.")
+                        }
+                    case .darkSolid:
+                        HStack(spacing: 6) {
+                            Image(systemName: "square.fill")
                                 .foregroundColor(.primary)
                             Text("Dark Solid — 100% pitch black to match the hardware notch bezel seamlessly.")
                         }
@@ -151,6 +157,10 @@ struct FrontScreenSettingsView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.top, 4)
+
+                Defaults.Toggle(key: .pureBlackBackground) {
+                    Text("Always use Dark Black background")
+                }
 
                 Divider()
 

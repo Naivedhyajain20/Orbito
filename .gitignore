@@ -55,5 +55,6 @@ build/
 *.dmg
 *.zip
 build_release/
+build_test/
 release/
 

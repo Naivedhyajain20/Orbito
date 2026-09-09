@@ -76,6 +76,7 @@ extension Defaults.Keys {
     static let releaseName = Key<String>("releaseName", default: "Orbito Launch Edition 🪐")
     static let notchMode  = Key<NotchMode>("notchMode",   default: .normal)
     static let notchTheme = Key<NotchTheme>("notchTheme", default: .glass)
+    static let pureBlackBackground = Key<Bool>("pureBlackBackground", default: false)
 
     // MARK: Productivity Features
     static let showNotes = Key<Bool>("showNotes", default: true)
@@ -234,11 +235,10 @@ extension Defaults.Keys {
     static let showNestCamera = Key<Bool>("showNestCamera", default: true)
     static let showNestBookmarks = Key<Bool>("showNestBookmarks", default: true)
     static let showNestClipboard = Key<Bool>("showNestClipboard", default: true)
-
     static let customOpenHeight = Key<Double>("customOpenHeight", default: 168.0)
     static let nestShortcuts = Key<[ShortcutItem]>("nestShortcuts", default: [
+        ShortcutItem(name: "Spotify", type: .app, target: "/Applications/Spotify.app", iconName: "music.note"),
         ShortcutItem(name: "ChatGPT", type: .url, target: "https://chatgpt.com", iconName: "bubble.left.and.sparkles.fill"),
-        ShortcutItem(name: "Calendar", type: .url, target: "calshow:", iconName: "calendar.badge.plus"),
         ShortcutItem(name: "GitHub", type: .url, target: "https://github.com", iconName: "chevron.left.forwardslash.chevron.right"),
         ShortcutItem(name: "Terminal", type: .app, target: "/System/Applications/Utilities/Terminal.app", iconName: "terminal.fill")
     ])

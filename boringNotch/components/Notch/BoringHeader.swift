@@ -114,6 +114,51 @@ struct BoringHeader: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
+                        // Orbito Brand Badge before Battery
+                        HStack(spacing: 4.5) {
+                            Image("logo")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 14, height: 14)
+                                .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
+                                .shadow(color: Color(red: 0.5, green: 0.6, blue: 1.0).opacity(0.45), radius: 2.5)
+
+                            Text("Orbito")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .tracking(1.8)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white,
+                                            Color(red: 0.88, green: 0.90, blue: 1.0)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(color: Color(red: 0.6, green: 0.7, blue: 1.0).opacity(0.35), radius: 2.5, x: 0, y: 0)
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.85))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.white.opacity(0.22),
+                                                    Color.white.opacity(0.06)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 0.8
+                                        )
+                                )
+                        )
+
                         if Defaults[.showBatteryIndicator] {
                             BoringBatteryView(
                                 batteryWidth: 30,

@@ -378,16 +378,21 @@ struct NotchNestWidgetsView: View {
                     launchShortcut(item)
                 }) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(Color(white: 0.15))
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .fill(Color(white: 0.14))
                             .frame(width: 26, height: 26)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 7)
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.8)
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                    .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
                             )
-                        Image(systemName: item.iconName.isEmpty ? "link" : item.iconName)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
+                        
+                        SmartShortcutIconView(
+                            name: item.name,
+                            target: item.target,
+                            type: item.type,
+                            fallbackIcon: item.iconName,
+                            size: 19
+                        )
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -418,11 +423,11 @@ struct NotchNestWidgetsView: View {
                     showShortcutManager = true
                 }) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 7)
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
                             .fill(Color(white: 0.10))
                             .frame(width: 26, height: 26)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 7)
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
                                     .stroke(Color.white.opacity(0.18), style: StrokeStyle(lineWidth: 0.8, dash: [2]))
                             )
                         Image(systemName: "plus")
@@ -440,11 +445,14 @@ struct NotchNestWidgetsView: View {
 
     private func launchShortcut(_ item: ShortcutItem) {
         if item.type == .app {
-            if item.target.hasPrefix("/") {
+            if item.target.hasPrefix("/") && FileManager.default.fileExists(atPath: item.target) {
                 let url = URL(fileURLWithPath: item.target)
                 NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
             } else if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: item.target) {
                 NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration())
+            } else if let path = SmartShortcutIconResolver.findAppPath(for: item.target) ?? SmartShortcutIconResolver.findAppPath(for: item.name) {
+                let url = URL(fileURLWithPath: path)
+                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
             } else if let url = URL(string: item.target) {
                 NSWorkspace.shared.open(url)
             }
@@ -468,8 +476,9 @@ struct NotchNestWidgetsView: View {
         panel.allowedContentTypes = [.application]
         if panel.runModal() == .OK, let url = panel.url {
             newShortcutTarget = url.path
+            let appName = url.deletingPathExtension().lastPathComponent
             if newShortcutName.isEmpty {
-                newShortcutName = url.deletingPathExtension().lastPathComponent
+                newShortcutName = appName
             }
             newShortcutIcon = "app.badge.fill"
             newShortcutType = .app
@@ -478,13 +487,26 @@ struct NotchNestWidgetsView: View {
 
     private func saveNewShortcut() {
         guard nestShortcuts.count < 6 else { return }
-        guard !newShortcutName.trimmingCharacters(in: .whitespaces).isEmpty,
-              !newShortcutTarget.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        var target = newShortcutTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else { return }
+
+        var name = newShortcutName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty {
+            if newShortcutType == .app {
+                name = (target as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+            } else {
+                name = SmartShortcutIconResolver.autoExtractName(from: target)
+            }
+        }
+
+        if newShortcutType == .url && !target.hasPrefix("http://") && !target.hasPrefix("https://") && !target.contains("://") {
+            target = "https://" + target
+        }
 
         let item = ShortcutItem(
-            name: newShortcutName.trimmingCharacters(in: .whitespaces),
+            name: name,
             type: newShortcutType,
-            target: newShortcutTarget.trimmingCharacters(in: .whitespaces),
+            target: target,
             iconName: newShortcutIcon
         )
         nestShortcuts.append(item)
@@ -512,16 +534,22 @@ struct NotchNestWidgetsView: View {
                         Text("Shortcuts & Quick Apps")
                             .font(.system(size: 12.5, weight: .heavy, design: .default))
                             .foregroundColor(.white)
+                        Text("AUTO-LOGO")
+                            .font(.system(size: 7.5, weight: .heavy))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.blue.opacity(0.25)))
+                            .foregroundColor(Color(red: 0.35, green: 0.75, blue: 1.0))
                         Text("\(nestShortcuts.count)/6 MAX")
                             .font(.system(size: 8, weight: .heavy))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(
                                 Capsule().fill(
-                                    nestShortcuts.count >= 6 ? Color.red.opacity(0.25) : Color.blue.opacity(0.25)
+                                    nestShortcuts.count >= 6 ? Color.red.opacity(0.25) : Color.white.opacity(0.10)
                                 )
                             )
-                            .foregroundColor(nestShortcuts.count >= 6 ? .red : Color(red: 0.35, green: 0.75, blue: 1.0))
+                            .foregroundColor(nestShortcuts.count >= 6 ? .red : .white.opacity(0.85))
                     }
 
                     Spacer()
@@ -543,13 +571,17 @@ struct NotchNestWidgetsView: View {
                         .padding(.vertical, 8)
                 } else {
                     ScrollView(.vertical, showsIndicators: true) {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 5) {
                             ForEach(nestShortcuts) { item in
                                 HStack(spacing: 8) {
-                                    Image(systemName: item.iconName.isEmpty ? "link" : item.iconName)
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .frame(width: 20)
+                                    SmartShortcutIconView(
+                                        name: item.name,
+                                        target: item.target,
+                                        type: item.type,
+                                        fallbackIcon: item.iconName,
+                                        size: 20
+                                    )
+                                    .frame(width: 24, height: 24)
 
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(item.name)
@@ -620,7 +652,7 @@ struct NotchNestWidgetsView: View {
                             .foregroundColor(.white.opacity(0.50))
 
                         HStack(spacing: 6) {
-                            TextField("Name (e.g. Figma, GitHub)", text: $newShortcutName)
+                            TextField(newShortcutType == .app ? "Name (e.g. Spotify, Slack)" : "Name (e.g. ChatGPT, GitHub)", text: $newShortcutName)
                                 .textFieldStyle(.plain)
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(.white)
@@ -636,12 +668,21 @@ struct NotchNestWidgetsView: View {
                         }
 
                         HStack(spacing: 6) {
-                            TextField(newShortcutType == .url ? "URL (e.g. https://github.com)" : "App Path (/Applications/...)", text: $newShortcutTarget)
+                            TextField(newShortcutType == .url ? "URL (e.g. https://spotify.com)" : "App Path or Name (e.g. /Applications/Spotify.app)", text: $newShortcutTarget)
                                 .textFieldStyle(.plain)
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(6)
                                 .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.08)))
+                                .onChange(of: newShortcutTarget) { _, val in
+                                    if newShortcutName.isEmpty && !val.isEmpty {
+                                        if newShortcutType == .app {
+                                            newShortcutName = (val as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+                                        } else {
+                                            newShortcutName = SmartShortcutIconResolver.autoExtractName(from: val)
+                                        }
+                                    }
+                                }
 
                             if newShortcutType == .app {
                                 Button(action: { chooseAppFile() }) {
@@ -659,30 +700,30 @@ struct NotchNestWidgetsView: View {
                             }
                         }
 
-                        // Icon Selector Row
-                        HStack(spacing: 6) {
-                            Text("Icon:")
-                                .font(.system(size: 8.5, weight: .bold))
-                                .foregroundColor(.white.opacity(0.55))
+                        // Live Icon Preview & Add Row
+                        HStack(spacing: 8) {
+                            HStack(spacing: 5) {
+                                Text("Preview:")
+                                    .font(.system(size: 8.5, weight: .bold))
+                                    .foregroundColor(.white.opacity(0.55))
 
-                            let availableIcons = [
-                                "globe", "link", "bubble.left.and.sparkles.fill", "terminal.fill",
-                                "safari.fill", "folder.fill", "chevron.left.forwardslash.chevron.right",
-                                "star.fill", "bolt.fill", "app.badge.fill"
-                            ]
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color(white: 0.15))
+                                        .frame(width: 24, height: 24)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color.white.opacity(0.15), lineWidth: 0.8)
+                                        )
 
-                            ForEach(availableIcons, id: \.self) { icon in
-                                Button(action: { newShortcutIcon = icon }) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(newShortcutIcon == icon ? Color(red: 0.35, green: 0.75, blue: 1.0) : Color(white: 0.14))
-                                            .frame(width: 18, height: 18)
-                                        Image(systemName: icon)
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundColor(newShortcutIcon == icon ? .black : .white)
-                                    }
+                                    SmartShortcutIconView(
+                                        name: newShortcutName,
+                                        target: newShortcutTarget,
+                                        type: newShortcutType,
+                                        fallbackIcon: newShortcutIcon,
+                                        size: 18
+                                    )
                                 }
-                                .buttonStyle(PlainButtonStyle())
                             }
 
                             Spacer()
@@ -694,11 +735,12 @@ struct NotchNestWidgetsView: View {
                                 }
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(.black)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
                                 .background(Capsule().fill(Color(red: 0.35, green: 0.75, blue: 1.0)))
                             }
                             .buttonStyle(PlainButtonStyle())
+                            .disabled(newShortcutTarget.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
                     }
                 }
@@ -1236,6 +1278,298 @@ struct NotchNestWidgetsView: View {
             guard let d = cal.date(byAdding: .day, value: offset, to: today) else { return nil }
             let f = DateFormatter(); f.dateFormat = "EEE"
             return DayInfo(weekday: f.string(from: d), day: cal.component(.day, from: d), isToday: offset == 0)
+        }
+    }
+}
+
+// MARK: ── Smart Icon Cache & Network Loader ──────────────────────────────────
+
+final class SmartIconCache {
+    static let shared = SmartIconCache()
+    private let cache = NSCache<NSString, NSImage>()
+    private var pendingTasks: [String: [(NSImage?) -> Void]] = [:]
+    private let lock = NSLock()
+
+    private init() {
+        cache.countLimit = 200
+    }
+
+    func getImage(forKey key: String) -> NSImage? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cache.object(forKey: key as NSString)
+    }
+
+    func setImage(_ image: NSImage, forKey key: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        cache.setObject(image, forKey: key as NSString)
+    }
+
+    func fetchFavicon(for domain: String, completion: @escaping (NSImage?) -> Void) {
+        let key = "fav:\(domain.lowercased())"
+        if let cached = getImage(forKey: key) {
+            completion(cached)
+            return
+        }
+
+        lock.lock()
+        if pendingTasks[key] != nil {
+            pendingTasks[key]?.append(completion)
+            lock.unlock()
+            return
+        }
+        pendingTasks[key] = [completion]
+        lock.unlock()
+
+        guard let url = URL(string: "https://www.google.com/s2/favicons?domain=\(domain)&sz=128") else {
+            notifyPending(key: key, image: nil)
+            return
+        }
+
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        let session = URLSession(configuration: config)
+
+        session.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self, let data = data, let img = NSImage(data: data) else {
+                self?.notifyPending(key: key, image: nil)
+                return
+            }
+            self.setImage(img, forKey: key)
+            self.notifyPending(key: key, image: img)
+        }.resume()
+    }
+
+    private func notifyPending(key: String, image: NSImage?) {
+        lock.lock()
+        let handlers = pendingTasks.removeValue(forKey: key) ?? []
+        lock.unlock()
+        DispatchQueue.main.async {
+            for handler in handlers {
+                handler(image)
+            }
+        }
+    }
+}
+
+// MARK: ── Smart Shortcut Icon Resolver ───────────────────────────────────────
+
+enum SmartShortcutIconResolver {
+    static func findAppPath(for rawNameOrPath: String) -> String? {
+        let clean = rawNameOrPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return nil }
+
+        // 1. Exact path
+        if FileManager.default.fileExists(atPath: clean) {
+            return clean
+        }
+
+        let nameOnly = (clean as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+
+        // 2. Direct folder checks
+        let searchDirectories = [
+            "/Applications",
+            "/System/Applications",
+            "/System/Applications/Utilities",
+            "/System/Library/CoreServices",
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications").path
+        ]
+
+        for dir in searchDirectories {
+            let candidate1 = "\(dir)/\(nameOnly).app"
+            if FileManager.default.fileExists(atPath: candidate1) {
+                return candidate1
+            }
+            let candidate2 = "\(dir)/\(clean).app"
+            if FileManager.default.fileExists(atPath: candidate2) {
+                return candidate2
+            }
+        }
+
+        // 3. Case-insensitive match in /Applications & /System/Applications
+        let lower = nameOnly.lowercased()
+        for dir in searchDirectories {
+            guard let contents = try? FileManager.default.contentsOfDirectory(atPath: dir) else { continue }
+            for item in contents where item.hasSuffix(".app") {
+                let baseName = item.replacingOccurrences(of: ".app", with: "").lowercased()
+                if baseName == lower || baseName.contains(lower) || lower.contains(baseName) {
+                    let fullPath = "\(dir)/\(item)"
+                    if FileManager.default.fileExists(atPath: fullPath) {
+                        return fullPath
+                    }
+                }
+            }
+        }
+
+        // 4. Bundle identifier search or NSWorkspace lookup
+        if let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: clean) {
+            return appUrl.path
+        }
+
+        return nil
+    }
+
+    static func findAppIcon(name: String, target: String) -> NSImage? {
+        if let path = findAppPath(for: target) ?? findAppPath(for: name) {
+            return NSWorkspace.shared.icon(forFile: path)
+        }
+        return nil
+    }
+
+    static func extractDomain(from urlString: String) -> String? {
+        var clean = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.isEmpty { return nil }
+        if !clean.contains("://") {
+            clean = "https://" + clean
+        }
+        guard let url = URL(string: clean), let host = url.host?.lowercased() else {
+            return nil
+        }
+        return host.replacingOccurrences(of: "www.", with: "")
+    }
+
+    static func autoExtractName(from input: String) -> String {
+        var clean = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.hasSuffix(".app") {
+            return (clean as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+        }
+        clean = clean.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")
+        if let firstSlash = clean.firstIndex(of: "/") {
+            clean = String(clean[..<firstSlash])
+        }
+        let parts = clean.split(separator: ".")
+        if let domainName = parts.first {
+            return domainName.capitalized
+        }
+        return "Shortcut"
+    }
+
+    static func brandFallback(name: String, target: String) -> (icon: String, bgColor: Color, fgColor: Color)? {
+        let combined = (name + " " + target).lowercased()
+
+        if combined.contains("spotify") {
+            return ("music.note", Color(red: 0.11, green: 0.73, blue: 0.33), .white)
+        } else if combined.contains("chatgpt") || combined.contains("openai") {
+            return ("sparkles", Color(red: 0.06, green: 0.64, blue: 0.50), .white)
+        } else if combined.contains("claude") || combined.contains("anthropic") {
+            return ("sparkles", Color(red: 0.85, green: 0.47, blue: 0.02), .white)
+        } else if combined.contains("youtube") {
+            return ("play.fill", Color(red: 1.0, green: 0.0, blue: 0.0), .white)
+        } else if combined.contains("github") {
+            return ("chevron.left.forwardslash.chevron.right", Color(white: 0.15), .white)
+        } else if combined.contains("figma") {
+            return ("paintpalette.fill", Color(red: 0.64, green: 0.35, blue: 1.0), .white)
+        } else if combined.contains("slack") {
+            return ("number", Color(red: 0.29, green: 0.08, blue: 0.29), .white)
+        } else if combined.contains("discord") {
+            return ("message.fill", Color(red: 0.35, green: 0.40, blue: 0.95), .white)
+        } else if combined.contains("whatsapp") {
+            return ("phone.fill", Color(red: 0.15, green: 0.83, blue: 0.40), .white)
+        } else if combined.contains("twitter") || combined.contains("x.com") {
+            return ("bubble.left.fill", Color(white: 0.10), .white)
+        } else if combined.contains("mail") || combined.contains("gmail") {
+            return ("envelope.fill", Color(red: 0.92, green: 0.26, blue: 0.21), .white)
+        } else if combined.contains("calendar") || target.contains("calshow:") {
+            return ("calendar", Color(red: 0.26, green: 0.52, blue: 0.96), .white)
+        } else if combined.contains("terminal") {
+            return ("terminal.fill", Color(white: 0.10), .white)
+        } else if combined.contains("finder") {
+            return ("folder.fill", Color(red: 0.0, green: 0.52, blue: 1.0), .white)
+        } else if combined.contains("safari") || combined.contains("chrome") {
+            return ("safari.fill", Color(red: 0.0, green: 0.52, blue: 1.0), .white)
+        }
+        return nil
+    }
+}
+
+// MARK: ── Smart Shortcut Icon View ───────────────────────────────────────────
+
+struct SmartShortcutIconView: View {
+    let name: String
+    let target: String
+    let type: ShortcutItem.ShortcutType
+    var fallbackIcon: String = "globe"
+    var size: CGFloat = 20
+
+    @State private var webFavicon: NSImage? = nil
+
+    private var domain: String? {
+        SmartShortcutIconResolver.extractDomain(from: target.isEmpty ? name : target)
+    }
+
+    private var macAppIcon: NSImage? {
+        if type == .app || target.hasPrefix("/") || target.contains(".app") {
+            return SmartShortcutIconResolver.findAppIcon(name: name, target: target)
+        }
+        // Also check if app is installed for this name/brand (e.g. Spotify desktop app)
+        if let appIcon = SmartShortcutIconResolver.findAppIcon(name: name, target: target) {
+            return appIcon
+        }
+        return nil
+    }
+
+    var body: some View {
+        Group {
+            // 1. Native Mac App Icon (Crisp OS-rendered original application icon)
+            if let appIcon = macAppIcon {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            }
+            // 2. Downloaded / Cached Web Favicon (e.g. Spotify, ChatGPT, GitHub, YouTube)
+            else if let favicon = webFavicon {
+                Image(nsImage: favicon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            }
+            // 3. Known Brand Fallback with custom colors
+            else if let brand = SmartShortcutIconResolver.brandFallback(name: name, target: target) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                        .fill(brand.bgColor)
+                    Image(systemName: brand.icon)
+                        .font(.system(size: size * 0.52, weight: .bold))
+                        .foregroundColor(brand.fgColor)
+                }
+                .frame(width: size, height: size)
+            }
+            // 4. Default SF Symbol
+            else {
+                Image(systemName: fallbackIcon.isEmpty ? "globe" : fallbackIcon)
+                    .font(.system(size: size * 0.52, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: size, height: size)
+            }
+        }
+        .onAppear {
+            loadFaviconIfNeeded()
+        }
+        .onChange(of: target) { _, _ in
+            loadFaviconIfNeeded()
+        }
+        .onChange(of: name) { _, _ in
+            loadFaviconIfNeeded()
+        }
+    }
+
+    private func loadFaviconIfNeeded() {
+        guard macAppIcon == nil else { return }
+        guard let host = domain, !host.isEmpty else { return }
+
+        if let cached = SmartIconCache.shared.getImage(forKey: "fav:\(host)") {
+            self.webFavicon = cached
+            return
+        }
+
+        SmartIconCache.shared.fetchFavicon(for: host) { img in
+            if let img = img {
+                self.webFavicon = img
+            }
         }
     }
 }

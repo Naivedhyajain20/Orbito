@@ -38,6 +38,7 @@ struct ContentView: View {
 
     @Default(.showNotHumanFace) var showNotHumanFace
     @Default(.notchTheme) var notchTheme
+    @Default(.pureBlackBackground) var pureBlackBackground
     @Default(.enableLiquidGlass) var enableLiquidGlass
     @Default(.glassOpacity) var glassOpacity
     @Default(.backgroundTint) var backgroundTint
@@ -93,7 +94,9 @@ struct ContentView: View {
     @ViewBuilder
     private var themeBackground: some View {
         if vm.notchState == .open {
-            if enableLiquidGlass || notchTheme == .glass {
+            if pureBlackBackground || notchTheme == .darkBlack || notchTheme == .darkSolid {
+                Color.black
+            } else if enableLiquidGlass || notchTheme == .glass {
                 ZStack {
                     if frostedBackground {
                         VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
@@ -118,6 +121,8 @@ struct ContentView: View {
                         VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
                         Color.black.opacity(0.65)
                     }
+                case .darkBlack, .darkSolid:
+                    Color.black
                 case .transparent:
                     ZStack {
                         VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
@@ -125,8 +130,6 @@ struct ContentView: View {
                     }
                 case .minimal:
                     Color.black.opacity(0.88)
-                case .darkSolid:
-                    Color.black
                 }
             }
         } else {

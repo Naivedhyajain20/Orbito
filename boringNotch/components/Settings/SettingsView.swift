@@ -1234,8 +1234,10 @@ struct Appearance: View {
                     switch notchTheme {
                     case .glass:
                         Text("✨ Frosted acrylic blur with smooth edges and translucent depth.")
+                    case .darkBlack:
+                        Text("🖤 Pure OLED Dark Black — 100% deep pitch-black background.")
                     case .darkSolid:
-                        Text("⬛ Pure pitch-black notch, matching default macOS hardware bezel.")
+                        Text("⬛ Opaque dark notch, matching default macOS hardware bezel.")
                     case .transparent:
                         Text("🪟 High translucency with delicate border for a floating UI effect.")
                     case .minimal:
@@ -1245,6 +1247,10 @@ struct Appearance: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.top, 2)
+
+                Defaults.Toggle(key: .pureBlackBackground) {
+                    Text("Always use Dark Black background")
+                }
             } header: {
                 Text("Theme & Style")
             }

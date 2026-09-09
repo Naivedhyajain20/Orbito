@@ -81,6 +81,7 @@ enum NotchMode: String, CaseIterable, Defaults.Serializable, Identifiable {
 // MARK: - Notch Theme
 enum NotchTheme: String, CaseIterable, Defaults.Serializable, Identifiable {
     case glass       = "Glass"
+    case darkBlack   = "Dark Black"
     case darkSolid   = "Dark Solid"
     case transparent = "Transparent"
     case minimal     = "Minimal"
@@ -89,7 +90,8 @@ enum NotchTheme: String, CaseIterable, Defaults.Serializable, Identifiable {
 
     var icon: String {
         switch self {
-        case .glass:       return "square.on.square.dashed"
+        case .glass:       return "sparkles"
+        case .darkBlack:   return "circle.fill"
         case .darkSolid:   return "square.fill"
         case .transparent: return "square.dotted"
         case .minimal:     return "squareshape"
@@ -100,6 +102,7 @@ enum NotchTheme: String, CaseIterable, Defaults.Serializable, Identifiable {
     var blurRadius: CGFloat {
         switch self {
         case .glass:       return 20
+        case .darkBlack:   return 0
         case .darkSolid:   return 0
         case .transparent: return 8
         case .minimal:     return 0
@@ -110,6 +113,7 @@ enum NotchTheme: String, CaseIterable, Defaults.Serializable, Identifiable {
     var bgOpacity: CGFloat {
         switch self {
         case .glass:       return 0.6
+        case .darkBlack:   return 1.0
         case .darkSolid:   return 1.0
         case .transparent: return 0.35
         case .minimal:     return 0.85

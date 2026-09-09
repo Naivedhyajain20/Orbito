@@ -343,102 +343,13 @@ struct ShortcutIconView: View {
     let item: BookmarkItem
 
     var body: some View {
-        Group {
-            if item.isApp || item.target.hasPrefix("/") || item.target.hasSuffix(".app") {
-                if let appIcon = getMacAppIcon(for: item.target) {
-                    Image(nsImage: appIcon)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } else {
-                    Image(systemName: "app.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.blue)
-                }
-            } else if let faviconUrl = getFaviconURL(for: item.target) {
-                AsyncImage(url: faviconUrl) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                    case .failure, .empty:
-                        fallbackIcon(for: item)
-                    @unknown default:
-                        fallbackIcon(for: item)
-                    }
-                }
-            } else {
-                fallbackIcon(for: item)
-            }
-        }
-        .frame(width: 24, height: 24)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-    }
-
-    private func getMacAppIcon(for path: String) -> NSImage? {
-        if FileManager.default.fileExists(atPath: path) {
-            return NSWorkspace.shared.icon(forFile: path)
-        }
-        let appCandidate = "/Applications/\(path).app"
-        if FileManager.default.fileExists(atPath: appCandidate) {
-            return NSWorkspace.shared.icon(forFile: appCandidate)
-        }
-        let sysCandidate = "/System/Applications/\(path).app"
-        if FileManager.default.fileExists(atPath: sysCandidate) {
-            return NSWorkspace.shared.icon(forFile: sysCandidate)
-        }
-        let utilCandidate = "/System/Applications/Utilities/\(path).app"
-        if FileManager.default.fileExists(atPath: utilCandidate) {
-            return NSWorkspace.shared.icon(forFile: utilCandidate)
-        }
-        return nil
-    }
-
-    private func getFaviconURL(for urlString: String) -> URL? {
-        var clean = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !clean.hasPrefix("http://") && !clean.hasPrefix("https://") {
-            clean = "https://" + clean
-        }
-        guard let url = URL(string: clean), let host = url.host else {
-            return nil
-        }
-        // Google High-Resolution Favicon Service (sz=128 delivers 128x128 crisp logos)
-        return URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=128")
-    }
-
-    private func fallbackIcon(for item: BookmarkItem) -> some View {
-        let name = item.name.lowercased()
-        let iconName: String
-        let color: Color
-
-        if name.contains("chatgpt") || name.contains("openai") {
-            iconName = "brain.head.profile"
-            color = .green
-        } else if name.contains("github") {
-            iconName = "chevron.left.forwardslash.chevron.right"
-            color = .purple
-        } else if name.contains("youtube") {
-            iconName = "play.rectangle.fill"
-            color = .red
-        } else if name.contains("claude") || name.contains("anthropic") {
-            iconName = "sparkles"
-            color = .orange
-        } else if name.contains("figma") {
-            iconName = "paintpalette.fill"
-            color = .pink
-        } else if name.contains("twitter") || name.contains("x.com") {
-            iconName = "bubble.left.fill"
-            color = .cyan
-        } else if name.contains("mail") || name.contains("gmail") {
-            iconName = "envelope.fill"
-            color = .red
-        } else {
-            iconName = "globe"
-            color = .blue
-        }
-
-        return Image(systemName: iconName)
-            .font(.system(size: 13))
-            .foregroundColor(color)
+        SmartShortcutIconView(
+            name: item.name,
+            target: item.target,
+            type: item.isApp ? .app : .url,
+            fallbackIcon: item.isApp ? "app.badge.fill" : "globe",
+            size: 24
+        )
     }
 }
+
