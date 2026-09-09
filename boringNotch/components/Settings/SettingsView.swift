@@ -847,11 +847,30 @@ struct About: View {
     let updaterController: SPUStandardUpdaterController
     @Environment(\.openWindow) var openWindow
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             Form {
+                VStack(spacing: 8) {
+                    Image("logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                    Text("Orbito")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+
+                    Text("Next-Gen Dynamic Notch & System Command Center")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+
                 Section {
                     HStack {
-                        Text("Release name")
+                        Text("Release")
                         Spacer()
                         Text(Defaults[.releaseName])
                             .foregroundStyle(.secondary)
@@ -860,10 +879,10 @@ struct About: View {
                         Text("Version")
                         Spacer()
                         if showBuildNumber {
-                            Text("(\(Bundle.main.buildVersionNumber ?? ""))")
+                            Text("(\(Bundle.main.buildVersionNumber ?? "1"))")
                                 .foregroundStyle(.secondary)
                         }
-                        Text(Bundle.main.releaseVersionNumber ?? "unkown")
+                        Text(Bundle.main.releaseVersionNumber ?? "1.0.0")
                             .foregroundStyle(.secondary)
                     }
                     .onTapGesture {
@@ -880,39 +899,41 @@ struct About: View {
                 HStack(spacing: 30) {
                     Spacer(minLength: 0)
                     Button {
-                        if let url = URL(string: "https://github.com/TheBoredTeam/boring.notch") {
+                        if let url = URL(string: "https://github.com/Naivedhyajain20/Orbito") {
                             NSWorkspace.shared.open(url)
                         }
                     } label: {
-                        VStack(spacing: 5) {
+                        HStack(spacing: 8) {
                             Image("Github")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
-                                .frame(width: 18)
-                            Text("GitHub")
+                                .frame(width: 16, height: 16)
+                            Text("GitHub Repository")
+                                .font(.system(size: 12, weight: .medium))
                         }
-                        .contentShape(Rectangle())
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(Capsule())
                     }
+                    .buttonStyle(PlainButtonStyle())
                     Spacer(minLength: 0)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .padding(.vertical, 4)
             }
             VStack(spacing: 0) {
                 Divider()
-                Text("Orbito • Made with 🫶🏻")
+                Text("Orbito • Crafted by Naivedhya Jain")
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .padding(.top, 5)
-                    .padding(.bottom, 7)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 10)
             }
             .frame(maxWidth: .infinity, alignment: .center)
         }
         .toolbar {
-            //            Button("Welcome window") {
-            //                openWindow(id: "onboarding")
-            //            }
-            //            .controlSize(.extraLarge)
             CheckForUpdatesView(updater: updaterController.updater)
         }
         .navigationTitle("About")
