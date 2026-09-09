@@ -88,8 +88,8 @@ Directly tap into macOS Mach kernel APIs and hardware telemetry without heavy ba
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/Naivedhyajain20/notchify.git
-   cd notchify
+   git clone https://github.com/Naivedhyajain20/Orbito.git
+   cd Orbito
    ```
 
 2. **Open in Xcode**:
