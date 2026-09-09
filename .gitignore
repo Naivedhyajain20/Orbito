@@ -52,4 +52,8 @@ build/
 *.ipa
 *.xcarchive
 *.dSYM
+*.dmg
+*.zip
+build_release/
+release/
 
