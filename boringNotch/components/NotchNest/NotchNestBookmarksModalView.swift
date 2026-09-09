@@ -8,39 +8,35 @@
 import SwiftUI
 import AppKit
 
-struct BookmarkItem: Identifiable, Codable {
-    var id = UUID()
+struct BookmarkItem: Identifiable, Codable, Equatable {
+    var id: UUID = UUID()
     var name: String
-    var url: String
-    var icon: String
+    var target: String // URL or Mac App Path
+    var isApp: Bool = false
 }
 
 struct NotchNestBookmarksModalView: View {
-    @State private var bookmarks: [BookmarkItem] = [
-        BookmarkItem(name: "ChatGPT", url: "https://chatgpt.com", icon: "brain.head.profile"),
-        BookmarkItem(name: "GitHub", url: "https://github.com", icon: "chevron.left.forwardslash.chevron.right"),
-        BookmarkItem(name: "YouTube", url: "https://youtube.com", icon: "play.rectangle.fill"),
-        BookmarkItem(name: "Notion", url: "https://notion.so", icon: "doc.text.fill"),
-        BookmarkItem(name: "Figma", url: "https://figma.com", icon: "paintpalette.fill"),
-        BookmarkItem(name: "X (Twitter)", url: "https://x.com", icon: "bubble.left.fill"),
-        BookmarkItem(name: "Gmail", url: "https://mail.google.com", icon: "envelope.fill")
-    ]
-
+    @State private var bookmarks: [BookmarkItem] = []
     @State private var isAdding: Bool = false
     @State private var newName: String = ""
-    @State private var newUrl: String = ""
+    @State private var newTarget: String = ""
+    @State private var isAppType: Bool = false
+    @State private var hoveredId: UUID? = nil
+
+    private let storageKey = "Orbito_SavedBookmarks_v2"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
+        VStack(alignment: .leading, spacing: 6) {
+            // Header Bar
+            HStack(spacing: 6) {
                 HStack(spacing: 5) {
-                    Image(systemName: "bookmark.fill")
+                    Image(systemName: "square.grid.2x2.fill")
                         .foregroundColor(.blue)
                         .font(.system(size: 11))
-                    Text("Instant Bookmarks")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    Text("Quick Launch & Bookmarks")
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                    Text("UNLIMITED")
+                    Text("AUTO-LOGO")
                         .font(.system(size: 7, weight: .bold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
@@ -51,88 +47,398 @@ struct NotchNestBookmarksModalView: View {
                 Spacer()
 
                 Button(action: {
-                    isAdding.toggle()
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                        isAdding.toggle()
+                        if !isAdding {
+                            newName = ""
+                            newTarget = ""
+                        }
+                    }
                 }) {
                     HStack(spacing: 3) {
                         Image(systemName: isAdding ? "xmark" : "plus")
                             .font(.system(size: 8, weight: .bold))
-                        Text(isAdding ? "Cancel" : "Add Bookmark")
+                        Text(isAdding ? "Close" : "Add Shortcut")
                             .font(.system(size: 8.5, weight: .semibold))
                     }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.blue.opacity(0.25)))
-                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(Capsule().fill(isAdding ? Color.red.opacity(0.2) : Color.blue.opacity(0.25)))
+                    .foregroundColor(isAdding ? .red : .white)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 10)
+            .padding(.top, 4)
 
+            // Add Shortcut Drawer
             if isAdding {
-                HStack(spacing: 6) {
-                    TextField("Name (e.g. Claude)", text: $newName)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 9))
-                        .padding(4)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.1)))
-                        .foregroundColor(.white)
-
-                    TextField("URL (e.g. https://claude.ai)", text: $newUrl)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 9))
-                        .padding(4)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.1)))
-                        .foregroundColor(.white)
-
-                    Button("Save") {
-                        if !newName.isEmpty && !newUrl.isEmpty {
-                            let formattedUrl = newUrl.hasPrefix("http") ? newUrl : "https://" + newUrl
-                            bookmarks.append(BookmarkItem(name: newName, url: formattedUrl, icon: "safari.fill"))
-                            newName = ""
-                            newUrl = ""
-                            isAdding = false
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        // Website vs App Toggle
+                        Button(action: { isAppType = false }) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "globe")
+                                Text("Website")
+                            }
+                            .font(.system(size: 8.5, weight: isAppType ? .regular : .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2.5)
+                            .background(isAppType ? Color.white.opacity(0.06) : Color.blue.opacity(0.35))
+                            .clipShape(Capsule())
+                            .foregroundColor(.white)
                         }
+                        .buttonStyle(.plain)
+
+                        Button(action: {
+                            isAppType = true
+                            openAppPicker()
+                        }) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "macwindow")
+                                Text("Mac App")
+                            }
+                            .font(.system(size: 8.5, weight: isAppType ? .bold : .regular))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2.5)
+                            .background(isAppType ? Color.blue.opacity(0.35) : Color.white.opacity(0.06))
+                            .clipShape(Capsule())
+                            .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+
+                        if isAppType {
+                            Button("📂 Browse...") {
+                                openAppPicker()
+                            }
+                            .font(.system(size: 8.5, weight: .medium))
+                            .foregroundColor(.cyan)
+                            .buttonStyle(.plain)
+                        }
+
+                        Spacer()
                     }
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.cyan)
-                    .buttonStyle(.plain)
+
+                    HStack(spacing: 6) {
+                        TextField(isAppType ? "App Name (e.g. Slack)" : "Name (e.g. ChatGPT)", text: $newName)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 9))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.1)))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: 140)
+
+                        TextField(isAppType ? "App Path (/Applications/...)" : "URL (e.g. chatgpt.com)", text: $newTarget)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 9))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.1)))
+                            .foregroundColor(.white)
+                            .onChange(of: newTarget) { _, val in
+                                if !isAppType && newName.isEmpty {
+                                    newName = autoExtractName(from: val)
+                                }
+                            }
+
+                        Button("Save") {
+                            saveNewShortcut()
+                        }
+                        .font(.system(size: 9.5, weight: .bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3.5)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .buttonStyle(.plain)
+                        .disabled(newTarget.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
                 }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.35)))
                 .padding(.horizontal, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            // Shortcuts Grid / Horizontal Scroll
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(bookmarks) { b in
+                HStack(spacing: 9) {
+                    ForEach(bookmarks) { item in
                         Button(action: {
-                            if let u = URL(string: b.url) {
-                                NSWorkspace.shared.open(u)
-                            }
+                            launch(item: item)
                         }) {
                             VStack(spacing: 3) {
-                                Circle()
-                                    .fill(Color.white.opacity(0.12))
-                                    .frame(width: 32, height: 32)
-                                    .overlay(
-                                        Image(systemName: b.icon)
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.white)
-                                    )
-                                Text(b.name)
+                                ZStack(alignment: .topTrailing) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                            .fill(Color(white: 0.15).opacity(0.85))
+                                            .frame(width: 36, height: 36)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                                    .stroke(Color.white.opacity(hoveredId == item.id ? 0.25 : 0.08), lineWidth: 1)
+                                            )
+
+                                        ShortcutIconView(item: item)
+                                            .frame(width: 26, height: 26)
+                                    }
+
+                                    // Delete Button on Hover
+                                    if hoveredId == item.id {
+                                        Button(action: {
+                                            delete(item: item)
+                                        }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.red)
+                                                .background(Circle().fill(Color.black))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .offset(x: 4, y: -4)
+                                    }
+                                }
+
+                                Text(item.name)
                                     .font(.system(size: 8, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.85))
+                                    .foregroundColor(.white.opacity(0.9))
                                     .lineLimit(1)
+                                    .frame(maxWidth: 52)
                             }
                             .frame(width: 52)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .help(b.url)
+                        .onHover { isHovered in
+                            hoveredId = isHovered ? item.id : nil
+                        }
+                        .contextMenu {
+                            Button("Open") {
+                                launch(item: item)
+                            }
+                            Button("Delete", role: .destructive) {
+                                delete(item: item)
+                            }
+                        }
+                        .help(item.target)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
             }
         }
-        .padding(8)
-        .frame(height: 105)
+        .padding(.vertical, 4)
+        .frame(height: isAdding ? 140 : 96)
+        .onAppear {
+            loadBookmarks()
+        }
+    }
+
+    // MARK: - Actions
+    private func saveNewShortcut() {
+        var cleanTarget = newTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTarget.isEmpty else { return }
+
+        var finalName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if finalName.isEmpty {
+            finalName = isAppType ? (cleanTarget as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "") : autoExtractName(from: cleanTarget)
+        }
+
+        if !isAppType && !cleanTarget.hasPrefix("http://") && !cleanTarget.hasPrefix("https://") {
+            cleanTarget = "https://" + cleanTarget
+        }
+
+        let newItem = BookmarkItem(name: finalName, target: cleanTarget, isApp: isAppType || cleanTarget.hasSuffix(".app"))
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            bookmarks.append(newItem)
+            saveBookmarks()
+            newName = ""
+            newTarget = ""
+            isAdding = false
+        }
+    }
+
+    private func delete(item: BookmarkItem) {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            bookmarks.removeAll { $0.id == item.id }
+            saveBookmarks()
+        }
+    }
+
+    private func launch(item: BookmarkItem) {
+        if item.isApp || item.target.hasPrefix("/") || item.target.hasSuffix(".app") {
+            if FileManager.default.fileExists(atPath: item.target) {
+                NSWorkspace.shared.open(URL(fileURLWithPath: item.target))
+            } else if let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: item.target) {
+                NSWorkspace.shared.open(appUrl)
+            } else {
+                let candidate = "/Applications/\(item.target).app"
+                if FileManager.default.fileExists(atPath: candidate) {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: candidate))
+                }
+            }
+        } else if let u = URL(string: item.target) {
+            NSWorkspace.shared.open(u)
+        }
+    }
+
+    private func openAppPicker() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+
+        if panel.runModal() == .OK, let url = panel.url {
+            let appPath = url.path
+            let appName = url.deletingPathExtension().lastPathComponent
+            newTarget = appPath
+            newName = appName
+            isAppType = true
+        }
+    }
+
+    private func autoExtractName(from urlString: String) -> String {
+        var clean = urlString.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")
+        if let firstSlash = clean.firstIndex(of: "/") {
+            clean = String(clean[..<firstSlash])
+        }
+        let parts = clean.split(separator: ".")
+        if let domainName = parts.first {
+            return domainName.capitalized
+        }
+        return "Website"
+    }
+
+    // MARK: - Persistence
+    private func loadBookmarks() {
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let saved = try? JSONDecoder().decode([BookmarkItem].self, from: data),
+           !saved.isEmpty {
+            self.bookmarks = saved
+        } else {
+            // Default Starters with Auto-Logos
+            self.bookmarks = [
+                BookmarkItem(name: "ChatGPT", target: "https://chatgpt.com", isApp: false),
+                BookmarkItem(name: "GitHub", target: "https://github.com", isApp: false),
+                BookmarkItem(name: "Claude", target: "https://claude.ai", isApp: false),
+                BookmarkItem(name: "YouTube", target: "https://youtube.com", isApp: false),
+                BookmarkItem(name: "Figma", target: "https://figma.com", isApp: false),
+                BookmarkItem(name: "X (Twitter)", target: "https://x.com", isApp: false),
+                BookmarkItem(name: "Finder", target: "/System/Library/CoreServices/Finder.app", isApp: true),
+                BookmarkItem(name: "Terminal", target: "/System/Applications/Utilities/Terminal.app", isApp: true)
+            ]
+            saveBookmarks()
+        }
+    }
+
+    private func saveBookmarks() {
+        if let encoded = try? JSONEncoder().encode(bookmarks) {
+            UserDefaults.standard.set(encoded, forKey: storageKey)
+        }
+    }
+}
+
+// MARK: - Smart Shortcut Icon View
+struct ShortcutIconView: View {
+    let item: BookmarkItem
+
+    var body: some View {
+        Group {
+            if item.isApp || item.target.hasPrefix("/") || item.target.hasSuffix(".app") {
+                if let appIcon = getMacAppIcon(for: item.target) {
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else {
+                    Image(systemName: "app.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                }
+            } else if let faviconUrl = getFaviconURL(for: item.target) {
+                AsyncImage(url: faviconUrl) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    case .failure, .empty:
+                        fallbackIcon(for: item)
+                    @unknown default:
+                        fallbackIcon(for: item)
+                    }
+                }
+            } else {
+                fallbackIcon(for: item)
+            }
+        }
+        .frame(width: 24, height: 24)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    private func getMacAppIcon(for path: String) -> NSImage? {
+        if FileManager.default.fileExists(atPath: path) {
+            return NSWorkspace.shared.icon(forFile: path)
+        }
+        let appCandidate = "/Applications/\(path).app"
+        if FileManager.default.fileExists(atPath: appCandidate) {
+            return NSWorkspace.shared.icon(forFile: appCandidate)
+        }
+        let sysCandidate = "/System/Applications/\(path).app"
+        if FileManager.default.fileExists(atPath: sysCandidate) {
+            return NSWorkspace.shared.icon(forFile: sysCandidate)
+        }
+        let utilCandidate = "/System/Applications/Utilities/\(path).app"
+        if FileManager.default.fileExists(atPath: utilCandidate) {
+            return NSWorkspace.shared.icon(forFile: utilCandidate)
+        }
+        return nil
+    }
+
+    private func getFaviconURL(for urlString: String) -> URL? {
+        var clean = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !clean.hasPrefix("http://") && !clean.hasPrefix("https://") {
+            clean = "https://" + clean
+        }
+        guard let url = URL(string: clean), let host = url.host else {
+            return nil
+        }
+        // Google High-Resolution Favicon Service (sz=128 delivers 128x128 crisp logos)
+        return URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=128")
+    }
+
+    private func fallbackIcon(for item: BookmarkItem) -> some View {
+        let name = item.name.lowercased()
+        let iconName: String
+        let color: Color
+
+        if name.contains("chatgpt") || name.contains("openai") {
+            iconName = "brain.head.profile"
+            color = .green
+        } else if name.contains("github") {
+            iconName = "chevron.left.forwardslash.chevron.right"
+            color = .purple
+        } else if name.contains("youtube") {
+            iconName = "play.rectangle.fill"
+            color = .red
+        } else if name.contains("claude") || name.contains("anthropic") {
+            iconName = "sparkles"
+            color = .orange
+        } else if name.contains("figma") {
+            iconName = "paintpalette.fill"
+            color = .pink
+        } else if name.contains("twitter") || name.contains("x.com") {
+            iconName = "bubble.left.fill"
+            color = .cyan
+        } else if name.contains("mail") || name.contains("gmail") {
+            iconName = "envelope.fill"
+            color = .red
+        } else {
+            iconName = "globe"
+            color = .blue
+        }
+
+        return Image(systemName: iconName)
+            .font(.system(size: 13))
+            .foregroundColor(color)
     }
 }
