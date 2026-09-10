@@ -1708,6 +1708,34 @@ struct Advanced: View {
             } header: {
                 Text("Window Behavior")
             }
+            
+            Section {
+                Defaults.Toggle(key: .enableFaceIDUnlockAnimation) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Face ID Unlock Animation")
+                        Text("Shows an iPhone-style Face ID unlock animation when unlocking your Mac with Touch ID or password.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                if Defaults[.enableFaceIDUnlockAnimation] {
+                    Defaults.Toggle(key: .faceIDHaptics) {
+                        Text("Haptic Feedback on Unlock")
+                    }
+                    
+                    Button {
+                        FaceIDManager.shared.testUnlockSequence()
+                    } label: {
+                        HStack {
+                            Image(systemName: "faceid")
+                            Text("Test Face ID Animation")
+                        }
+                    }
+                }
+            } header: {
+                Text("Lock Screen & Unlock")
+            }
         }
         .accentColor(.effectiveAccent)
         .navigationTitle("Advanced")

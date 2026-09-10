@@ -56,12 +56,18 @@ struct ContentView: View {
                 : cornerRadiusInsets.closed.top
     }
 
+    private var isFaceIDExpanded: Bool {
+        coordinator.expandingView.type == .faceID && coordinator.expandingView.show && vm.notchState == .closed
+    }
+
     private var currentNotchShape: NotchShape {
         NotchShape(
             topCornerRadius: topCornerRadius,
-            bottomCornerRadius: ((vm.notchState == .open) && Defaults[.cornerRadiusScaling])
-                ? cornerRadiusInsets.opened.bottom
-                : cornerRadiusInsets.closed.bottom
+            bottomCornerRadius: isFaceIDExpanded
+                ? 24
+                : (((vm.notchState == .open) && Defaults[.cornerRadiusScaling])
+                    ? cornerRadiusInsets.opened.bottom
+                    : cornerRadiusInsets.closed.bottom)
         )
     }
 
@@ -72,6 +78,8 @@ struct ContentView: View {
             && vm.notchState == .closed && Defaults[.showPowerStatusNotifications]
         {
             chinWidth = 640
+        } else if isFaceIDExpanded {
+            chinWidth = vm.closedNotchSize.width
         } else if (!coordinator.expandingView.show || coordinator.expandingView.type == .music)
             && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle)
             && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed
@@ -166,7 +174,8 @@ struct ContentView: View {
                     )
                 
                 mainLayout
-                    .frame(height: vm.notchState == .open ? vm.notchSize.height : nil)
+                    .frame(height: vm.notchState == .open ? vm.notchSize.height : (isFaceIDExpanded ? 136 : nil))
+                    .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isFaceIDExpanded)
                     .conditionalModifier(true) { view in
                         let openAnimation = Animation.spring(response: 0.42, dampingFraction: 0.8, blendDuration: 0)
                         let closeAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0, blendDuration: 0)
@@ -332,6 +341,8 @@ struct ContentView: View {
                             .frame(width: 76, alignment: .trailing)
                         }
                         .frame(height: vm.effectiveClosedNotchHeight, alignment: .center)
+                      } else if coordinator.expandingView.type == .faceID && coordinator.expandingView.show && vm.notchState == .closed {
+                          FaceIDNotchView()
                       } else if coordinator.sneakPeek.show && Defaults[.inlineHUD] && (coordinator.sneakPeek.type != .music) && (coordinator.sneakPeek.type != .battery) && vm.notchState == .closed {
                           InlineHUD(type: $coordinator.sneakPeek.type, value: $coordinator.sneakPeek.value, icon: $coordinator.sneakPeek.icon, hoverAnimation: $isHovering, gestureProgress: $gestureProgress)
                               .transition(.opacity)

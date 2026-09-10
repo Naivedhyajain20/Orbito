@@ -114,6 +114,8 @@ extension Defaults.Keys {
     //static let openLastTabByDefault = Key<Bool>("openLastTabByDefault", default: false)
     static let showOnLockScreen = Key<Bool>("showOnLockScreen", default: false)
     static let hideFromScreenRecording = Key<Bool>("hideFromScreenRecording", default: false)
+    static let enableFaceIDUnlockAnimation = Key<Bool>("enableFaceIDUnlockAnimation", default: true)
+    static let faceIDHaptics = Key<Bool>("faceIDHaptics", default: true)
     
     // MARK: Appearance
     static let showEmojis = Key<Bool>("showEmojis", default: false)
