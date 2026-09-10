@@ -135,6 +135,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             disableSkyLightOnAllWindows()
         }
+        
+        if Defaults[.enableFaceIDUnlockAnimation] {
+            FaceIDManager.shared.triggerUnlockSequence()
+        }
     }
     
     @MainActor
