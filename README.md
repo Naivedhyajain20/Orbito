@@ -135,7 +135,3 @@ Directly tap into macOS Mach kernel APIs and hardware telemetry without heavy ba
 
 - **100% Local & Offline**: Orbito operates entirely on your Mac. No telemetry is collected, and no data ever leaves your device.
 ---
-
-## 📄 License
-
-Orbito is licensed under the [GNU General Public License v3.0](LICENSE).
