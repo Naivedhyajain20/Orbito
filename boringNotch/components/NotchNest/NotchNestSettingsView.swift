@@ -53,6 +53,7 @@ struct NotchNestSettingsView: View {
     @Default(.enableFaceIDUnlockAnimation) private var enableFaceIDUnlockAnimation
     @Default(.faceIDHaptics) private var faceIDHaptics
     @Default(.faceIDSound) private var faceIDSound
+    @Default(.hideFromScreenRecording) private var hideFromScreenRecording
     @Default(.showOnAllDisplays) private var showOnAllDisplays
     @State private var selectedDisplay: String = "Built-in Retina Display (Built-in)"
     @State private var componentOrder: [String] = ["Player", "Calendar", "Notes", "Timer", "Camera"]
@@ -340,6 +341,22 @@ struct NotchNestSettingsView: View {
                             .cornerRadius(6)
                         }
                         .buttonStyle(.plain)
+                    }
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Hide from Screenshots & Recordings")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Keeps Orbito hidden during screen recordings and screenshots")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $hideFromScreenRecording)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
                     }
 
                     Divider().background(Color.white.opacity(0.06))

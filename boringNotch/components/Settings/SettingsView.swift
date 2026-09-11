@@ -198,6 +198,14 @@ struct GeneralSettings: View {
                         }
                     }
                 }
+                Defaults.Toggle(key: .hideFromScreenRecording) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Hide from screenshots & recordings")
+                        Text("When enabled, Orbito will not appear in screenshots, screen recording, and video captures.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Defaults.Toggle(key: .showOnAllDisplays) {
                     Text("Show on all displays")
                 }
@@ -1731,7 +1739,12 @@ struct Advanced: View {
                     Text("Show notch on lock screen")
                 }
                 Defaults.Toggle(key: .hideFromScreenRecording) {
-                    Text("Hide from screen recording")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Hide from screenshots & screen recordings")
+                        Text("When enabled, Orbito is invisible in screenshots, screen capture, and video recordings.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             } header: {
                 Text("Window Behavior")
