@@ -153,6 +153,7 @@ struct GeneralSettings: View {
     @Default(.nonNotchHeightMode) var nonNotchHeightMode
     @Default(.notchHeight) var notchHeight
     @Default(.notchHeightMode) var notchHeightMode
+    @Default(.showOnLockScreen) var showOnLockScreen
     @Default(.showOnAllDisplays) var showOnAllDisplays
     @Default(.automaticallySwitchDisplay) var automaticallySwitchDisplay
     @Default(.enableGestures) var enableGestures
@@ -170,6 +171,33 @@ struct GeneralSettings: View {
                 }
                 .tint(.effectiveAccent)
                 LaunchAtLogin.Toggle("Launch at login")
+                Defaults.Toggle(key: .showOnLockScreen) {
+                    Text("Show notch on lock screen")
+                }
+                Defaults.Toggle(key: .enableFaceIDUnlockAnimation) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Face ID Unlock Animation")
+                        Text("Shows an iPhone-style Face ID unlock animation when unlocking your Mac with Touch ID or password.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if Defaults[.enableFaceIDUnlockAnimation] {
+                    Defaults.Toggle(key: .faceIDSound) {
+                        Text("Apple Pay Unlock Sound")
+                    }
+                    Defaults.Toggle(key: .faceIDHaptics) {
+                        Text("Haptic Feedback on Unlock")
+                    }
+                    Button {
+                        FaceIDManager.shared.testUnlockSequence()
+                    } label: {
+                        HStack {
+                            Image(systemName: "faceid")
+                            Text("Test Face ID Animation")
+                        }
+                    }
+                }
                 Defaults.Toggle(key: .showOnAllDisplays) {
                     Text("Show on all displays")
                 }
@@ -1720,6 +1748,9 @@ struct Advanced: View {
                 }
                 
                 if Defaults[.enableFaceIDUnlockAnimation] {
+                    Defaults.Toggle(key: .faceIDSound) {
+                        Text("Apple Pay Unlock Sound")
+                    }
                     Defaults.Toggle(key: .faceIDHaptics) {
                         Text("Haptic Feedback on Unlock")
                     }

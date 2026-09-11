@@ -116,6 +116,7 @@ extension Defaults.Keys {
     static let hideFromScreenRecording = Key<Bool>("hideFromScreenRecording", default: false)
     static let enableFaceIDUnlockAnimation = Key<Bool>("enableFaceIDUnlockAnimation", default: true)
     static let faceIDHaptics = Key<Bool>("faceIDHaptics", default: true)
+    static let faceIDSound = Key<Bool>("faceIDSound", default: true)
     
     // MARK: Appearance
     static let showEmojis = Key<Bool>("showEmojis", default: false)
