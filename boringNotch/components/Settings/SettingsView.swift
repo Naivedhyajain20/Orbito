@@ -153,6 +153,7 @@ struct GeneralSettings: View {
     @Default(.nonNotchHeightMode) var nonNotchHeightMode
     @Default(.notchHeight) var notchHeight
     @Default(.notchHeightMode) var notchHeightMode
+    @Default(.showOnLockScreen) var showOnLockScreen
     @Default(.showOnAllDisplays) var showOnAllDisplays
     @Default(.automaticallySwitchDisplay) var automaticallySwitchDisplay
     @Default(.enableGestures) var enableGestures
@@ -170,6 +171,41 @@ struct GeneralSettings: View {
                 }
                 .tint(.effectiveAccent)
                 LaunchAtLogin.Toggle("Launch at login")
+                Defaults.Toggle(key: .showOnLockScreen) {
+                    Text("Show notch on lock screen")
+                }
+                Defaults.Toggle(key: .enableFaceIDUnlockAnimation) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Face ID Unlock Animation")
+                        Text("Shows an iPhone-style Face ID unlock animation when unlocking your Mac with Touch ID or password.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if Defaults[.enableFaceIDUnlockAnimation] {
+                    Defaults.Toggle(key: .faceIDSound) {
+                        Text("Apple Pay Unlock Sound")
+                    }
+                    Defaults.Toggle(key: .faceIDHaptics) {
+                        Text("Haptic Feedback on Unlock")
+                    }
+                    Button {
+                        FaceIDManager.shared.testUnlockSequence()
+                    } label: {
+                        HStack {
+                            Image(systemName: "faceid")
+                            Text("Test Face ID Animation")
+                        }
+                    }
+                }
+                Defaults.Toggle(key: .hideFromScreenRecording) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Hide from screenshots & recordings")
+                        Text("When enabled, Orbito will not appear in screenshots, screen recording, and video captures.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Defaults.Toggle(key: .showOnAllDisplays) {
                     Text("Show on all displays")
                 }
@@ -1703,7 +1739,12 @@ struct Advanced: View {
                     Text("Show notch on lock screen")
                 }
                 Defaults.Toggle(key: .hideFromScreenRecording) {
-                    Text("Hide from screen recording")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Hide from screenshots & screen recordings")
+                        Text("When enabled, Orbito is invisible in screenshots, screen capture, and video recordings.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             } header: {
                 Text("Window Behavior")
@@ -1720,6 +1761,9 @@ struct Advanced: View {
                 }
                 
                 if Defaults[.enableFaceIDUnlockAnimation] {
+                    Defaults.Toggle(key: .faceIDSound) {
+                        Text("Apple Pay Unlock Sound")
+                    }
                     Defaults.Toggle(key: .faceIDHaptics) {
                         Text("Haptic Feedback on Unlock")
                     }

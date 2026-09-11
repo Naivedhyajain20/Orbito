@@ -1,137 +1,185 @@
 <div align="center">
 
 # 🪐 Orbito
-### The Next-Gen Dynamic Notch & System Command Center for macOS
+### The Ultimate Next-Gen Dynamic Notch & System Command Center for macOS
 
-[![macOS](https://img.shields.io/badge/macOS-14.0%2B-black?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com/macos)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B%20%7C%2015.0%2B%20Sonoma%20%26%20Sequoia-black?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com/macos)
+[![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%20%7C%20M2%20%7C%20M3%20%7C%20M4-007AFF?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-F05138?style=for-the-badge&logo=swift&logoColor=white)](https://swift.org)
-[![SwiftUI](https://img.shields.io/badge/SwiftUI-Native-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
-
+[![SwiftUI](https://img.shields.io/badge/SwiftUI-Native%20Architecture-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
+[![Privacy First](https://img.shields.io/badge/Privacy-100%25%20Local%20%26%20Offline-34C759?style=for-the-badge&logo=shield&logoColor=white)](#-privacy--security)
 
 <p align="center">
-  <b>Transform your MacBook's notch into an ultra-sleek, futuristic HUD.</b><br>
-  Real-time kernel telemetry, Apple-grade storage breakdown, instant clipboard history, seamless file shelf, dynamic media controller, and productivity tools — all nestled seamlessly around your notch.
+  <b>Elevate your MacBook display into a hyper-responsive, futuristic command island.</b><br>
+  Real-time Mach kernel telemetry, 3D Gyroscope Face ID unlock with haptics & Apple Pay audio, intelligent APFS storage breakdown, instant clipboard memory, drag-and-drop file tray, seamless media controller, and screen capture privacy shield — elegantly nestled around your notch.
 </p>
+
+[Download Latest Release](https://github.com/Naivedhyajain20/Orbito/releases) • [Features](#-core-features) • [Installation](#-download--installation) • [Architecture](#-architecture--engineering) • [Privacy](#-privacy--security)
 
 </div>
 
 ---
 
-## ✨ Features
+## 🌟 Why Orbito?
 
-### ⚡ Real-Time System Telemetry & Activity Monitor
-Directly tap into macOS Mach kernel APIs and hardware telemetry without heavy background overhead:
-- **Live CPU Waveform**: Multi-core real-time CPU percentage with a rolling live waveform visualizer.
-- **GPU & Core Engine**: Live GPU utilization and graphics memory metrics.
-- **Memory (RAM) Diagnostics**: Detailed physical memory breakdown (*Active*, *Wired*, *Compressed*, and *Free*).
-- **Network I/O Throughput**: Dynamic download and upload speeds with live transfer indicators.
-- **Battery & Thermals**: Live battery percentage, charging wattage, cycle count, state of health, and SoC temperatures.
+MacBook displays feature a physical notch that is often treated as dead space. **Orbito** transforms that space into a context-aware powerhouse of utility, hardware monitoring, and instant productivity — engineered in **100% Native Swift & SwiftUI** with zero Electron overhead.
 
-### 💾 Apple-Style Macintosh HD Storage Analyzer
-- **Interactive Multi-Segment Storage Bar**: Accurate APFS capacity visualizer categorized into *Apps*, *Developer*, *iCloud Drive*, *macOS*, *System Data*, and *Free Space*.
-- **Quick Actions**: One-click jump directly to native macOS Storage Management settings.
-
-### 📋 Smart Clipboard Manager
-- **Instant History**: Automatically tracks copied text and code snippets with instant preview.
-- **Search & Filter**: Real-time fuzzy search to quickly find past clippings.
-- **1-Click Copy**: Re-copy any snippet with instant visual feedback and relative timestamps.
-
-### 📂 Notch File Tray & AirDrop Staging
-- **Drag-and-Drop Shelf**: Drop any file onto the notch to temporarily hold it while switching workspaces or full-screen apps.
-- **Drag Out Anywhere**: Seamlessly drag items from the notch tray onto Finder, Desktop, Mail, or Slack.
-- **Instant AirDrop**: Quick AirDrop button to share staged files immediately with nearby Apple devices.
-
-### 🎵 Dynamic Media Player & Audio Visualizer
-- **Now Playing HUD**: Displays currently playing tracks from Apple Music, Spotify, YouTube Music, and web browsers.
-- **Interactive Controls**: Scrubbing timeline, album art display, play/pause, next/previous buttons.
-- **Audio Waveform**: Responsive visualizer reacting to live media playback.
-
-### ⏱️ Focus, Calendar & Productivity Hub
-- **Pomodoro Timer**: Clean timer with configurable intervals, audio cues, and active notch status badge.
-- **Calendar & Agenda**: View upcoming meetings, events, and reminders directly from the notch.
-- **Scratchpad & Notes**: Quick jotting area for notes and ideas.
-
-### 🎛️ Minimalist Native HUD Replacements
-- Modern, unobtrusive floating HUDs for **Volume**, **Display Brightness**, and **Keyboard Backlight**.
+```
+                              ╔═══════════════════════════╗
+                              ║       O R B I T O         ║
+ ╔════════════════════════════╩═══════════════════════════╩════════════════════════════╗
+ ║  [⚡ Activity HUD]  [🪪 Face ID]  [💾 Storage]  [📋 Clipboard]  [📂 Tray]  [🎵 Media]  ║
+ ╚══════════════════════════════════════════════════════════════════════════════════════╝
+                                            │
+        ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
+        ▼                   ▼                               ▼                   ▼
+ [Mach Kernel APIs]  [SkyLight / Window]            [IOKit / Power]     [APFS FileSystem]
+  (CPU/RAM/GPU Load)  (Screen Privacy Filter)        (Battery Telemetry) (Storage Breakdown)
+```
 
 ---
 
-## 📸 Overview & Architecture
+## ✨ Core Features
 
-```
-                      ┌───────────────────────────────────────┐
-                      │             ORBITO NOTCH              │
-  ┌───────────────────┴───────────────────────────────────────┴───────────────────┐
-  │  [🎧 Media Player]   [📊 Activity HUD]   [💾 Storage]   [📋 Clipboard]   [📂 Tray]  │
-  └───────────────────────────────────────────────────────────────────────────────┘
-                                          │
-       ┌──────────────────┬───────────────┴───────────────┬──────────────────┐
-       ▼                  ▼                               ▼                  ▼
- [Mach Kernel APIs]   [IOKit / Power]             [AppKit / Pasteboard]   [APFS FileSystem]
- (CPU/RAM/GPU Load)   (Battery/Thermal)            (Clipboard Tracking)   (Storage Breakdown)
-```
+### 🪪 1. Dynamic Face ID & Gyroscope Unlock Experience
+Experience an iPhone-style Dynamic Island unlock animation right at your MacBook notch:
+- **3D Glowing Gyroscope Rings**: Smooth mint-green gyro rings rotate in 3D perspective upon device unlock.
+- **Success Checkmark (`✓`) & Apple Pay Sound**: Crisp Apple Pay haptic chime triggers the moment Touch ID or password authentication succeeds.
+- **Granular Customization**: Toggle unlock animation, Apple Pay sound effect, and haptic feedback individually in **Settings > General**.
 
-- **100% Native Swift & SwiftUI**: Crafted exclusively for macOS with zero heavy web wrappers or Electron bloat.
-- **Low Energy Footprint**: Utilizes native Mach host statistics and event-driven updates to preserve battery life.
-- **Screen Adaptive**: Automatically adapts across MacBook Pro liquid retina notch displays and external monitors without hardware notches.
+---
+
+### 🛡️ 2. Screen Capture & Recording Privacy Shield
+Keep your workspace clean and your sensitive clippings private during meetings, tutorials, and screen shares:
+- **Auto-Hide on Screenshots & Screen Recording**: Uses macOS window server level sharing restrictions (`sharingType = .none`) to automatically make Orbito invisible in screenshots, QuickTime recordings, OBS, Zoom, and Google Meet.
+- **User Selectable**: Easily toggle visibility under **Settings > General > System features** (Default: **Hidden**).
+
+---
+
+### ⚡ 3. Real-Time Mach-Kernel Telemetry & Hardware Activity HUD
+Direct hardware instrumentation with sub-millisecond polling accuracy and ultra-low CPU footprint:
+- **Live CPU Waveform**: Multi-core real-time utilization graphs with dynamic rolling waveform visualizer.
+- **GPU & Neural Core Engine**: GPU load metrics and VRAM diagnostics.
+- **Physical RAM Breakdown**: Color-coded breakdown of *Active*, *Wired*, *Compressed*, and *Free* physical memory.
+- **Network Bandwidth Throughput**: Real-time upload and download speeds with live transfer indicators.
+- **Battery & Thermal State**: Live percentage, charging wattage, battery cycle count, battery health, and SoC temperature sensors.
+
+---
+
+### 💾 4. Apple-Grade APFS Storage Visualizer
+Instant, color-coded capacity inspector mirroring Apple's native macOS Storage layout:
+- **Multi-Segment Capacity Bar**: Dynamic storage categorization including *Applications*, *Developer Tools*, *iCloud Drive*, *macOS Core*, *System Data*, and *Available Space*.
+- **Quick Action Links**: One-click direct shortcut to native macOS Storage Management.
+
+---
+
+### 📋 5. Smart Clipboard Manager & Search
+Never lose a copied link, code snippet, or text again:
+- **Zero-Latency Clipboard Cache**: Automatically captures copy events in the background.
+- **Real-Time Fuzzy Filter**: Instantly search through clipboard history with live keyword matching.
+- **1-Click Restore**: Paste or re-copy any previous clipping with instant visual confirmation.
+
+---
+
+### 📂 6. Notch File Tray & AirDrop Staging Station
+Your temporary file launchpad across spaces and full-screen windows:
+- **Drag-and-Drop Stashing**: Drag files, photos, or documents directly into the notch to hold them temporarily while navigating between apps or desktops.
+- **Drag Out Anywhere**: Seamlessly extract staged files into Mail, Slack, Terminal, or Finder.
+- **One-Tap AirDrop**: Direct button to instantly beam staged files to nearby iOS and macOS devices.
+
+---
+
+### 🎵 7. Dynamic Media Controller & Waveform HUD
+Control audio playback effortlessly without switching active apps:
+- **Universal Player Support**: Integrates with Apple Music, Spotify, YouTube Music, Podcasts, and web browsers.
+- **Full Playback Controls**: Interactive scrubber bar, track artwork, volume level, previous/next track, and pause/resume.
+- **Dynamic Audio Waveform**: Responsive audio spectrum animation that pulses with music playback.
+
+---
+
+### ⏱️ 8. Pomodoro Focus & Productivity Suite
+- **Customizable Intervals**: Configurable work/break durations with smooth notch status badges.
+- **Audio & Haptic Alerts**: Non-distracting notifications when focus sessions complete.
+- **Calendar & Quick Notes**: Preview upcoming meetings, calendar agenda, and a quick scratchpad.
+
+---
+
+### 🎛️ 9. Minimalist Native HUD Replacements
+- Floating, transparent bezel-free indicators for **Volume**, **Display Brightness**, and **Keyboard Backlight**.
 
 ---
 
 ## 📥 Download & Installation
 
-1. **Download the latest release**:
-   Grab **`Orbito.dmg`** from the [GitHub Releases](https://github.com/Naivedhyajain20/Orbito/releases) page.
+### Option A: Pre-Compiled Release (Recommended)
 
-2. **Install**:
-   Open `Orbito.dmg` and drag **Orbito** into your `/Applications` folder.
-
-3. **First-Time Launch (Gatekeeper)**:
-   Because Orbito is independently built without a paid Apple Developer certificate, macOS may show a security notice on first launch. To bypass this instantly, run this one-line command in Terminal:
+1. Download **[`boringNotch.dmg`](https://github.com/Naivedhyajain20/Orbito/releases)** or **[`boringNotch-Release.zip`](https://github.com/Naivedhyajain20/Orbito/releases)** from the latest release.
+2. Open `boringNotch.dmg` and drag **Orbito** into your `/Applications` folder.
+3. **First Launch (macOS Gatekeeper)**:
+   Since Orbito is built independently without an Apple Developer certificate, macOS Gatekeeper may show a verification notice. Run this single command in Terminal to authorize:
    ```bash
-   xattr -cr /Applications/Orbito.app
+   xattr -cr /Applications/boringNotch.app
    ```
-   Then double-click **Orbito** in Applications to launch!
+4. Double-click **Orbito** to launch!
 
 ---
 
-## 🚀 Building from Source
+### Option B: Build from Source
 
-### System Requirements
-- **macOS**: macOS 14.0 Sonoma or macOS 15.0+ Sequoia (Apple Silicon & Intel)
-- **Xcode**: 15.0 or later
-- **Swift**: 5.9+
+#### Prerequisites
+- macOS 14.0 (Sonoma) or macOS 15.0+ (Sequoia)
+- Xcode 15.0+
+- Swift 5.9+
 
-### Building from Source
+```bash
+# 1. Clone the repository
+git clone https://github.com/Naivedhyajain20/Orbito.git
+cd Orbito
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/Naivedhyajain20/Orbito.git
-   cd Orbito
-   ```
+# 2. Open project in Xcode
+open boringNotch.xcodeproj
 
-2. **Open in Xcode**:
-   ```bash
-   open boringNotch.xcodeproj
-   ```
-
-3. **Build & Run**:
-   - Select the `boringNotch` scheme and press **`⌘ + R`** to launch Orbito.
-   - On first launch, follow the onboarding screen to grant necessary permissions (Accessibility & Calendar).
+# 3. Build & Run
+# Select the 'boringNotch' scheme and press ⌘ + R
+```
 
 ---
 
-## ⌨️ Gestures & Controls
+## ⌨️ Gestures & Shortcuts
 
-| Action | Interaction |
-| :--- | :--- |
-| **Expand Notch HUD** | Hover your cursor over the notch area |
-| **Switch Panels** | Click on any icon in the Notch Nest bar (System, Storage, Clipboard, Tray, Timer) |
-| **Stash Files** | Drag any file into the notch from Finder |
-| **Open Settings** | Click the Orbito icon in the macOS Menu Bar → **Settings** (or press `⌘ ,`) |
+| Action | Gesture / Shortcut | Description |
+| :--- | :--- | :--- |
+| **Expand Notch** | Hover cursor over notch | Opens the active command island |
+| **Close Notch** | Two-finger swipe up / Move cursor away | Seamlessly snaps notch closed |
+| **Stage Files** | Drag file onto Notch | Stashes file in Notch File Tray |
+| **Quick Settings** | Click Menu Bar Icon → **Settings** (`⌘ ,`) | Opens configuration center |
+| **Test Face ID** | Settings → **Test Face ID Animation** | Plays 3D gyro animation & Apple Pay sound |
+
+---
+
+## 🏗️ Architecture & Engineering
+
+Orbito is built with a hyper-optimized native pipeline:
+
+- **SkyLight Window Server Integration**: Custom `BoringNotchSkyLightWindow` implementation maintaining persistent floating window levels, space transitions, and recording privacy filters.
+- **Mach Host Kernel Telemetry**: Directly queries low-level `host_statistics64` and `processor_info` Mach kernel APIs for near-zero CPU footprint (<0.1% idle).
+- **CoreAudio & AVFoundation Engine**: Native `AVAudioPlayer` and `NSSound` dispatch for instant audio feedback without playback contention.
+- **SwiftUI + AppKit Hybrid**: Smooth 60/120 FPS ProMotion spring animations with fine-grained state management via Swift `Defaults`.
 
 ---
 
 ## 🔒 Privacy & Security
 
-- **100% Local & Offline**: Orbito operates entirely on your Mac. No telemetry is collected, and no data ever leaves your device.
+- **100% Local Execution**: Orbito contains **zero trackers, zero analytics, and zero remote network calls**.
+- **All Data Stays on Device**: Clipboard history, notes, and staged files exist strictly in your local memory and sandbox.
+- **Open Source Transparency**: Every line of code is fully open and auditable.
+
 ---
+
+<div align="center">
+
+Crafted with ❤️ for macOS power users.
+
+⭐ **Star this repository if you love Orbito!**
+
+</div>

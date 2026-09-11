@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import AVFoundation
 import Combine
 import Defaults
 import Foundation
@@ -19,8 +20,38 @@ final class FaceIDManager: ObservableObject {
     @Published var isActive: Bool = false
     
     private var sequenceTask: Task<Void, Never>?
+    private var audioPlayer: AVAudioPlayer?
     
     private init() {}
+    
+    /// Plays Apple Pay sound when success checkmark appears
+    private func playUnlockSound() {
+        guard Defaults[.faceIDSound] else { return }
+        
+        let soundURLs = [
+            Bundle.main.url(forResource: "Apple-pay-sound-effect", withExtension: "mp3"),
+            URL(fileURLWithPath: "/Users/naivedhyajain/boring.notch/Apple-pay-sound-effect.mp3"),
+            URL(fileURLWithPath: "/Users/naivedhyajain/boring.notch/boringNotch/Apple-pay-sound-effect.mp3")
+        ].compactMap { $0 }
+        
+        for url in soundURLs {
+            if FileManager.default.fileExists(atPath: url.path) {
+                do {
+                    audioPlayer = try AVAudioPlayer(contentsOf: url)
+                    audioPlayer?.prepareToPlay()
+                    audioPlayer?.play()
+                    return
+                } catch {
+                    print("⚠️ [FaceIDManager] Failed to play sound with AVAudioPlayer: \(error)")
+                }
+            }
+        }
+        
+        // Fallback to NSSound
+        if let sound = NSSound(named: "Apple-pay-sound-effect") {
+            sound.play()
+        }
+    }
     
     /// Fast unlock sequence: Glowing Gyroscope Rings -> Green Checkmark (✓) -> Smooth Dismiss
     func triggerUnlockSequence(forced: Bool = false, onComplete: (() -> Void)? = nil) {
@@ -51,6 +82,9 @@ final class FaceIDManager: ObservableObject {
             withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
                 self.currentState = .success
             }
+            
+            // Play Apple Pay Sound Effect on success tick
+            self.playUnlockSound()
             
             // Optional Haptic Feedback
             if Defaults[.faceIDHaptics] && Defaults[.enableHaptics] {

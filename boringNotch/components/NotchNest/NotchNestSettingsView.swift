@@ -49,6 +49,11 @@ struct NotchNestSettingsView: View {
 
     // System features
     @State private var launchAtLogin: Bool = LaunchAtLogin.isEnabled
+    @Default(.showOnLockScreen) private var showOnLockScreen
+    @Default(.enableFaceIDUnlockAnimation) private var enableFaceIDUnlockAnimation
+    @Default(.faceIDHaptics) private var faceIDHaptics
+    @Default(.faceIDSound) private var faceIDSound
+    @Default(.hideFromScreenRecording) private var hideFromScreenRecording
     @Default(.showOnAllDisplays) private var showOnAllDisplays
     @State private var selectedDisplay: String = "Built-in Retina Display (Built-in)"
     @State private var componentOrder: [String] = ["Player", "Calendar", "Notes", "Timer", "Camera"]
@@ -267,6 +272,91 @@ struct NotchNestSettingsView: View {
                             .onChange(of: launchAtLogin) { _, val in
                                 LaunchAtLogin.isEnabled = val
                             }
+                    }
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    HStack {
+                        Text("Show on Lock Screen")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Toggle("", isOn: $showOnLockScreen)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    }
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Face ID Unlock Animation")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Shows animated glyph when unlocking Mac")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $enableFaceIDUnlockAnimation)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    }
+
+                    if enableFaceIDUnlockAnimation {
+                        Divider().background(Color.white.opacity(0.06))
+
+                        HStack {
+                            Text("Apple Pay Unlock Sound")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Toggle("", isOn: $faceIDSound)
+                                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                        }
+
+                        Divider().background(Color.white.opacity(0.06))
+
+                        HStack {
+                            Text("Haptic Feedback on Unlock")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Toggle("", isOn: $faceIDHaptics)
+                                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                        }
+
+                        Divider().background(Color.white.opacity(0.06))
+
+                        Button {
+                            FaceIDManager.shared.testUnlockSequence()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "faceid")
+                                Text("Test Face ID Animation")
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 5)
+                            .padding(.horizontal, 10)
+                            .background(Color.white.opacity(0.12))
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Hide from Screenshots & Recordings")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Keeps Orbito hidden during screen recordings and screenshots")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $hideFromScreenRecording)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
                     }
 
                     Divider().background(Color.white.opacity(0.06))
