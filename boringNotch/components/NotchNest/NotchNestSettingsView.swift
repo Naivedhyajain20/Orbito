@@ -10,6 +10,7 @@ enum NotchNestSettingsTab: String, CaseIterable, Identifiable {
     case calendar = "Calendar"
     case pomodoro = "Pomodoro"
     case camera = "Camera"
+    case coding = "Developer"
     case clipboard = "Clipboard"
     case toggle = "Toggle"
     case game = "Game"
@@ -26,6 +27,7 @@ enum NotchNestSettingsTab: String, CaseIterable, Identifiable {
         case .calendar: return "calendar"
         case .pomodoro: return "timer"
         case .camera: return "camera.fill"
+        case .coding: return "chevron.left.forwardslash.chevron.right"
         case .clipboard: return "doc.on.clipboard.fill"
         case .toggle: return "keyboard"
         case .game: return "gamecontroller.fill"
@@ -86,8 +88,17 @@ struct NotchNestSettingsView: View {
 
     // Camera tab states
     @Default(.mirrorShape) private var mirrorShape
+    @Default(.mirrorRecordAudio) private var mirrorRecordAudio
     @State private var cameraSource: String = "Automatic"
     @State private var mirrorFlip: Bool = true
+
+    // Developer / Coding Activity states
+    @Default(.githubUsername) private var githubUsername
+    @Default(.githubToken) private var githubToken
+    @Default(.leetcodeUsername) private var leetcodeUsername
+    @Default(.showCodingActivityInNotch) private var showCodingActivityInNotch
+    @Default(.codingAutoRefreshMinutes) private var codingAutoRefreshMinutes
+    @ObservedObject private var codingManager = CodingActivityManager.shared
 
     // Clipboard tab states
     @Default(.showClipboard) private var showClipboard
@@ -162,6 +173,8 @@ struct NotchNestSettingsView: View {
                         pomodoroSection
                     case .camera:
                         cameraSection
+                    case .coding:
+                        codingSection
                     case .clipboard:
                         clipboardSection
                     case .toggle:
@@ -735,13 +748,401 @@ struct NotchNestSettingsView: View {
                     }
                     .frame(width: 200)
                 }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Record Microphone Audio")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Include voice audio when using the mirror record button.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    Spacer()
+                    Toggle("", isOn: $mirrorRecordAudio)
+                        .toggleStyle(SwitchToggleStyle(tint: .blue))
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Recordings Folder")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("~/Movies/Orbito Recordings")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    Spacer()
+                    Button(action: {
+                        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
+                        if let folder = movies?.appendingPathComponent("Orbito Recordings", isDirectory: true) {
+                            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                            NSWorkspace.shared.open(folder)
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder")
+                                .font(.system(size: 9))
+                            Text("Open in Finder")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                    }
+                    .buttonStyle(BorderedButtonStyle())
+                }
             }
             .padding(14)
             .background(cardBackground)
         }
     }
 
-    // MARK: - 7. Clipboard Section
+    // MARK: - 7. Developer & Coding Activity Section (GitHub & LeetCode)
+    private var codingSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Developer Profiles (GitHub & LeetCode)")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                Text("Monitor your real-time GitHub commit graphs, LeetCode problem solving, and streaks right from the notch.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+
+            // MARK: GitHub Account Card
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .foregroundColor(Color(red: 57/255, green: 211/255, blue: 83/255))
+                            .font(.system(size: 13, weight: .bold))
+                        Text("GitHub Profile")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+
+                    Spacer()
+
+                    if let gh = codingManager.githubData {
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.green).frame(width: 6, height: 6)
+                            Text("Connected as @\(gh.username)")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.green)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.green.opacity(0.12)))
+                    } else {
+                        Text("Not Linked")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+
+                // Username input row
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Username")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                        TextField("e.g. torvalds, octocat", text: $githubUsername)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Personal Token (Optional)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                        SecureField("ghp_... (for private commits)", text: $githubToken)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+
+                    Button(action: {
+                        codingManager.refreshGitHub()
+                    }) {
+                        HStack(spacing: 3) {
+                            if codingManager.isLoadingGitHub {
+                                ProgressView().scaleEffect(0.6).frame(width: 12, height: 12)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 9, weight: .bold))
+                            }
+                            Text("Verify & Link")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                    }
+                    .buttonStyle(BorderedProminentButtonStyle())
+                    .disabled(githubUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || codingManager.isLoadingGitHub)
+                    .padding(.top, 16)
+                }
+
+                if let err = codingManager.githubError {
+                    Text(err)
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
+                }
+
+                // Live Profile & Heatmap Preview
+                if let gh = codingManager.githubData {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Divider().background(Color.white.opacity(0.08))
+
+                        HStack(spacing: 12) {
+                            if let avatar = gh.avatarUrl, let url = URL(string: avatar) {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .success(let img):
+                                        img.resizable().aspectRatio(contentMode: .fill)
+                                    default:
+                                        Image(systemName: "person.circle").foregroundColor(.gray)
+                                    }
+                                }
+                                .frame(width: 32, height: 32)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color(red: 57/255, green: 211/255, blue: 83/255), lineWidth: 1.2))
+                            }
+
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(gh.name ?? gh.username)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.white)
+                                Text("@\(gh.username) • \(gh.publicRepos) public repos • \(gh.followers) followers")
+                                    .font(.system(size: 9.5))
+                                    .foregroundColor(.white.opacity(0.6))
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 8) {
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    Text("\(gh.totalContributionsYear)")
+                                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                        .foregroundColor(Color(red: 57/255, green: 211/255, blue: 83/255))
+                                    Text("Past Year Commits")
+                                        .font(.system(size: 8))
+                                        .foregroundColor(.white.opacity(0.5))
+                                }
+
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    Text("🔥 \(gh.currentStreak)d")
+                                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                        .foregroundColor(Color(red: 1.0, green: 0.45, blue: 0.15))
+                                    Text("Current Streak")
+                                        .font(.system(size: 8))
+                                        .foregroundColor(.white.opacity(0.5))
+                                }
+                            }
+                        }
+
+                        // Mini Contribution Graph Preview
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(alignment: .top, spacing: 2) {
+                                ForEach(gh.weeks) { week in
+                                    VStack(spacing: 2) {
+                                        ForEach(week.days) { day in
+                                            RoundedRectangle(cornerRadius: 1.5)
+                                                .fill(miniGithubColor(day.level))
+                                                .frame(width: 7, height: 7)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(4)
+                        }
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.4)))
+                    }
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+
+            // MARK: LeetCode Account Card
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "curlybraces")
+                            .foregroundColor(Color(red: 255/255, green: 161/255, blue: 22/255))
+                            .font(.system(size: 13, weight: .bold))
+                        Text("LeetCode Profile")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+
+                    Spacer()
+
+                    if let lc = codingManager.leetcodeData {
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.green).frame(width: 6, height: 6)
+                            Text("Connected as @\(lc.username)")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.green)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.green.opacity(0.12)))
+                    } else {
+                        Text("Not Linked")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+
+                // Username input row
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("LeetCode Username")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                        TextField("e.g. your_handle", text: $leetcodeUsername)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+
+                    Button(action: {
+                        codingManager.refreshLeetCode()
+                    }) {
+                        HStack(spacing: 3) {
+                            if codingManager.isLoadingLeetCode {
+                                ProgressView().scaleEffect(0.6).frame(width: 12, height: 12)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 9, weight: .bold))
+                            }
+                            Text("Verify & Link")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                    }
+                    .buttonStyle(BorderedProminentButtonStyle())
+                    .disabled(leetcodeUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || codingManager.isLoadingLeetCode)
+                    .padding(.top, 16)
+                }
+
+                if let err = codingManager.leetcodeError {
+                    Text(err)
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
+                }
+
+                // Live Stats Preview
+                if let lc = codingManager.leetcodeData {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Divider().background(Color.white.opacity(0.08))
+
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(lc.realName ?? lc.username)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.white)
+                                Text(lc.ranking > 0 ? "Global Rank #\(lc.ranking)" : "@\(lc.username)")
+                                    .font(.system(size: 9.5))
+                                    .foregroundColor(Color(red: 255/255, green: 161/255, blue: 22/255))
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 6) {
+                                HStack(spacing: 2) {
+                                    Text("Easy:").font(.system(size: 9, weight: .medium)).foregroundColor(.white.opacity(0.6))
+                                    Text("\(lc.easySolved)").font(.system(size: 10, weight: .heavy)).foregroundColor(Color(red: 0/255, green: 184/255, blue: 163/255))
+                                }
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2.5)
+                                .background(Capsule().fill(Color.white.opacity(0.06)))
+
+                                HStack(spacing: 2) {
+                                    Text("Med:").font(.system(size: 9, weight: .medium)).foregroundColor(.white.opacity(0.6))
+                                    Text("\(lc.mediumSolved)").font(.system(size: 10, weight: .heavy)).foregroundColor(Color(red: 255/255, green: 192/255, blue: 30/255))
+                                }
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2.5)
+                                .background(Capsule().fill(Color.white.opacity(0.06)))
+
+                                HStack(spacing: 2) {
+                                    Text("Hard:").font(.system(size: 9, weight: .medium)).foregroundColor(.white.opacity(0.6))
+                                    Text("\(lc.hardSolved)").font(.system(size: 10, weight: .heavy)).foregroundColor(Color(red: 255/255, green: 55/255, blue: 95/255))
+                                }
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2.5)
+                                .background(Capsule().fill(Color.white.opacity(0.06)))
+
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    Text("\(lc.totalSolved)")
+                                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text("Total Solved")
+                                        .font(.system(size: 8))
+                                        .foregroundColor(.white.opacity(0.5))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+
+            // MARK: Display Preferences Card
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Notch Preferences")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Show Developer Icon in Notch Bar")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Displays the code symbol in the notch header for 1-click access to your heatmaps.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    Spacer()
+                    Toggle("", isOn: $showCodingActivityInNotch)
+                        .toggleStyle(SwitchToggleStyle(tint: .blue))
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Auto-Refresh Interval")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Frequency of automatic background syncs from GitHub and LeetCode.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    Spacer()
+                    Picker("", selection: $codingAutoRefreshMinutes) {
+                        Text("Every 15 minutes").tag(15)
+                        Text("Every 30 minutes").tag(30)
+                        Text("Every 1 hour").tag(60)
+                        Text("Every 2 hours").tag(120)
+                    }
+                    .frame(width: 170)
+                    .onChange(of: codingAutoRefreshMinutes) { _, _ in
+                        codingManager.setupAutoRefresh()
+                    }
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+        }
+    }
+
+    private func miniGithubColor(_ level: Int) -> Color {
+        switch level {
+        case 1: return Color(red: 14/255, green: 68/255, blue: 41/255)
+        case 2: return Color(red: 0/255, green: 109/255, blue: 50/255)
+        case 3: return Color(red: 38/255, green: 166/255, blue: 65/255)
+        case 4: return Color(red: 57/255, green: 211/255, blue: 83/255)
+        default: return Color(red: 22/255, green: 27/255, blue: 34/255)
+        }
+    }
+
+    // MARK: - 8. Clipboard Section
     private var clipboardSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Smart AI Clipboard")

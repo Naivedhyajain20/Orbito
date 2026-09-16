@@ -4,10 +4,12 @@
 //
 //  Created by Harsh Vardhan  Goswami  on 19/08/24.
 //
+import AppKit
 import AVFoundation
+import Defaults
 import SwiftUI
 
-class WebcamManager: NSObject, ObservableObject {
+class WebcamManager: NSObject, ObservableObject, AVCaptureFileOutputRecordingDelegate {
     static let shared = WebcamManager()
     
     @Published var previewLayer: AVCaptureVideoPreviewLayer? {
@@ -17,6 +19,9 @@ class WebcamManager: NSObject, ObservableObject {
     }
     
     private var captureSession: AVCaptureSession?
+    private var movieOutput: AVCaptureMovieFileOutput?
+    private var durationTimer: Timer?
+
     @Published var isSessionRunning: Bool = false {
         didSet {
             objectWillChange.send()
@@ -30,6 +35,28 @@ class WebcamManager: NSObject, ObservableObject {
     }
     
     @Published var cameraAvailable: Bool = false {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+
+    // MARK: - Recording State
+    @Published var isRecording: Bool = false {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+    @Published var recordingDuration: TimeInterval = 0 {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+    @Published var lastSavedVideoURL: URL? = nil {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+    @Published var showSavedToast: Bool = false {
         didSet {
             objectWillChange.send()
         }
@@ -175,11 +202,28 @@ class WebcamManager: NSObject, ObservableObject {
                 session.beginConfiguration()
                 session.sessionPreset = .high
                 session.addInput(videoInput)
+
+                // Optional audio input for video recording
+                if Defaults[.mirrorRecordAudio] {
+                    let audioAuth = AVCaptureDevice.authorizationStatus(for: .audio)
+                    if audioAuth == .authorized,
+                       let audioDevice = AVCaptureDevice.default(for: .audio),
+                       let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
+                       session.canAddInput(audioInput) {
+                        session.addInput(audioInput)
+                    }
+                }
                 
                 let videoOutput = AVCaptureVideoDataOutput()
                 videoOutput.setSampleBufferDelegate(nil, queue: nil)
                 if session.canAddOutput(videoOutput) {
                     session.addOutput(videoOutput)
+                }
+
+                let movieOutput = AVCaptureMovieFileOutput()
+                if session.canAddOutput(movieOutput) {
+                    session.addOutput(movieOutput)
+                    self.movieOutput = movieOutput
                 }
                 session.commitConfiguration()
                 
@@ -212,7 +256,18 @@ class WebcamManager: NSObject, ObservableObject {
     /// Cleans up an existing capture session, removing all inputs and outputs
     private func cleanupExistingSession() {
         if let existingSession = self.captureSession {
-            // First stop the session if running
+            // First stop any ongoing recording
+            if self.isRecording {
+                self.movieOutput?.stopRecording()
+                DispatchQueue.main.async {
+                    self.isRecording = false
+                    self.durationTimer?.invalidate()
+                    self.durationTimer = nil
+                }
+            }
+            self.movieOutput = nil
+
+            // Then stop the session if running
             if existingSession.isRunning {
                 existingSession.stopRunning()
             }
@@ -310,6 +365,108 @@ class WebcamManager: NSObject, ObservableObject {
             self.cleanupExistingSession()
             
             NSLog("Capture session stopped and cleaned up")
+        }
+    }
+
+    // MARK: - Video Recording Controls
+    
+    func startRecording() {
+        guard let movieOutput = self.movieOutput, !isRecording else {
+            NSLog("Cannot start recording: movieOutput unavailable or already recording")
+            return
+        }
+
+        let folderURL: URL
+        let customFolder = Defaults[.mirrorRecordingsFolder]
+        if !customFolder.isEmpty {
+            folderURL = URL(fileURLWithPath: customFolder)
+        } else if let moviesURL = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first {
+            folderURL = moviesURL.appendingPathComponent("Orbito Recordings", isDirectory: true)
+        } else {
+            folderURL = FileManager.default.temporaryDirectory
+        }
+
+        do {
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        } catch {
+            NSLog("Failed to create recordings directory: \(error.localizedDescription)")
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let filename = "Orbito_Recording_\(formatter.string(from: Date())).mov"
+        let fileURL = folderURL.appendingPathComponent(filename)
+
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+
+        DispatchQueue.main.async {
+            self.isRecording = true
+            self.recordingDuration = 0
+            self.showSavedToast = false
+            self.durationTimer?.invalidate()
+            self.durationTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+                guard let self = self else { return }
+                self.recordingDuration += 1
+            }
+        }
+
+        movieOutput.startRecording(to: fileURL, recordingDelegate: self)
+        NSLog("Started video recording to: \(fileURL.path)")
+    }
+
+    func stopRecording() {
+        guard isRecording else { return }
+        movieOutput?.stopRecording()
+        DispatchQueue.main.async {
+            self.isRecording = false
+            self.durationTimer?.invalidate()
+            self.durationTimer = nil
+        }
+        NSLog("Stopped video recording")
+    }
+
+    func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+
+    func revealLastRecordingInFinder() {
+        guard let url = lastSavedVideoURL else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    // MARK: - AVCaptureFileOutputRecordingDelegate
+
+    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
+        DispatchQueue.main.async {
+            self.isRecording = false
+            self.durationTimer?.invalidate()
+            self.durationTimer = nil
+
+            if error == nil {
+                self.lastSavedVideoURL = outputFileURL
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    self.showSavedToast = true
+                }
+                NSSound(named: "Glass")?.play()
+                NSLog("Successfully saved recording to \(outputFileURL.path)")
+
+                // Auto-dismiss notification pill after 7 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
+                    if self.lastSavedVideoURL == outputFileURL {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            self.showSavedToast = false
+                        }
+                    }
+                }
+            } else {
+                NSLog("Recording finished with error: \(error?.localizedDescription ?? "unknown")")
+            }
         }
     }
 }

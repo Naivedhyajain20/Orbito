@@ -39,6 +39,9 @@ func availableTabs() -> [TabModel] {
     if Defaults[.showAIActions] {
         tabs.append(TabModel(label: "AI", icon: "wand.and.stars", view: .aiActions))
     }
+    if Defaults[.showCodingActivityInNotch] {
+        tabs.append(TabModel(label: "Code", icon: "chevron.left.forwardslash.chevron.right", view: .coding))
+    }
 
     return tabs
 }
@@ -80,3 +83,4 @@ struct TabSelectionView: View {
 #Preview {
     BoringHeader().environmentObject(BoringViewModel())
 }
+

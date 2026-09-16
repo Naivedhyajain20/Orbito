@@ -34,6 +34,7 @@ public enum NotchViews {
     case calculator
     case systemInfo
     case aiActions
+    case coding
 }
 
 enum SettingsEnum {

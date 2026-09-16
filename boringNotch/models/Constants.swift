@@ -245,6 +245,18 @@ extension Defaults.Keys {
         ShortcutItem(name: "GitHub", type: .url, target: "https://github.com", iconName: "chevron.left.forwardslash.chevron.right"),
         ShortcutItem(name: "Terminal", type: .app, target: "/System/Applications/Utilities/Terminal.app", iconName: "terminal.fill")
     ])
+
+    // MARK: Developer / Coding Activity (GitHub & LeetCode)
+    static let githubUsername = Key<String>("githubUsername", default: "")
+    static let githubToken = Key<String>("githubToken", default: "")
+    static let leetcodeUsername = Key<String>("leetcodeUsername", default: "")
+    static let showCodingActivityInNotch = Key<Bool>("showCodingActivityInNotch", default: true)
+    static let codingDefaultPlatform = Key<String>("codingDefaultPlatform", default: "github")
+    static let codingAutoRefreshMinutes = Key<Int>("codingAutoRefreshMinutes", default: 30)
+
+    // MARK: Mirror Recording
+    static let mirrorRecordAudio = Key<Bool>("mirrorRecordAudio", default: false)
+    static let mirrorRecordingsFolder = Key<String>("mirrorRecordingsFolder", default: "")
 }
 
 // MARK: - Shortcut Item Model for Quick Launcher

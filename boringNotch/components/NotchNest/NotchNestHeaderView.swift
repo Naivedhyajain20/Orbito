@@ -15,6 +15,7 @@ enum NotchNestMode: String, CaseIterable {
     case game
     case clipboard
     case tray
+    case coding
 }
 
 struct NotchNestHeaderView: View {
@@ -24,6 +25,7 @@ struct NotchNestHeaderView: View {
     @Binding var currentMode: NotchNestMode
     @State private var showPremiumSheet: Bool = false
     @Default(.showBatteryIndicator) var showBatteryIndicator
+    @Default(.showCodingActivityInNotch) var showCodingActivityInNotch
 
     private var isPhysicalNotch: Bool {
         (NSScreen.screen(withUUID: coordinator.selectedScreenUUID)?.safeAreaInsets.top ?? 0) > 0
@@ -60,6 +62,14 @@ struct NotchNestHeaderView: View {
                 navIconButton(icon: "doc.on.clipboard.fill", active: currentMode == .clipboard, tooltip: "Clipboard") {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
                         currentMode = currentMode == .clipboard ? .home : .clipboard
+                    }
+                }
+                // Developer / Coding Activity (GitHub & LeetCode)
+                if showCodingActivityInNotch {
+                    navIconButton(icon: "chevron.left.forwardslash.chevron.right", active: currentMode == .coding, tooltip: "Coding Activity (GitHub & LeetCode)") {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                            currentMode = currentMode == .coding ? .home : .coding
+                        }
                     }
                 }
 
