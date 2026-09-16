@@ -30,6 +30,9 @@ struct NotchNestRootView: View {
                 case .tray:
                     NotchNestFileTrayModalView()
                         .transition(.scale(scale: 0.96).combined(with: .opacity))
+                case .coding:
+                    NotchNestCodingModalView()
+                        .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

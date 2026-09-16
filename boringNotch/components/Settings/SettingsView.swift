@@ -63,6 +63,9 @@ struct SettingsView: View {
                 // NavigationLink(value: "Extensions") {
                 //     Label("Extensions", systemImage: "puzzlepiece.extension")
                 // }
+                NavigationLink(value: "Developer") {
+                    Label("Developer", systemImage: "chevron.left.forwardslash.chevron.right")
+                }
                 NavigationLink(value: "Advanced") {
                     Label("Advanced", systemImage: "gearshape.2")
                 }
@@ -97,6 +100,8 @@ struct SettingsView: View {
                     ProductivitySettings()
                 case "Shortcuts":
                     Shortcuts()
+                case "Developer":
+                    DeveloperSettingsView()
                 case "Extensions":
                     GeneralSettings()
                 case "Advanced":
@@ -1503,6 +1508,9 @@ struct Appearance: View {
                     Text("Square")
                         .tag(MirrorShapeEnum.rectangle)
                 }
+                Defaults.Toggle(key: .mirrorRecordAudio) {
+                    Text("Record microphone audio in mirror videos")
+                }
                 Defaults.Toggle(key: .showNotHumanFace) {
                     Text("Show cool face animation while inactive")
                 }
@@ -1522,6 +1530,72 @@ struct Appearance: View {
         }
 
         return false
+    }
+}
+
+// MARK: - Developer Settings View
+struct DeveloperSettingsView: View {
+    @Default(.githubUsername) var githubUsername
+    @Default(.githubToken) var githubToken
+    @Default(.leetcodeUsername) var leetcodeUsername
+    @Default(.showCodingActivityInNotch) var showCodingActivityInNotch
+    @Default(.codingAutoRefreshMinutes) var codingAutoRefreshMinutes
+    @ObservedObject var codingManager = CodingActivityManager.shared
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("GitHub Username", text: $githubUsername)
+                SecureField("GitHub Token (Optional, for private commits)", text: $githubToken)
+                Button("Verify & Sync GitHub") {
+                    codingManager.refreshGitHub()
+                }
+                .disabled(githubUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || codingManager.isLoadingGitHub)
+
+                if let gh = codingManager.githubData {
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        Text("Connected: \(gh.totalContributionsYear) commits past year (🔥 \(gh.currentStreak)d streak)")
+                            .foregroundColor(.green)
+                    }
+                }
+            } header: {
+                Text("GitHub Account")
+            }
+
+            Section {
+                TextField("LeetCode Username", text: $leetcodeUsername)
+                Button("Verify & Sync LeetCode") {
+                    codingManager.refreshLeetCode()
+                }
+                .disabled(leetcodeUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || codingManager.isLoadingLeetCode)
+
+                if let lc = codingManager.leetcodeData {
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        Text("Connected: \(lc.totalSolved) solved (Rank #\(lc.ranking))")
+                            .foregroundColor(.orange)
+                    }
+                }
+            } header: {
+                Text("LeetCode Account")
+            }
+
+            Section {
+                Toggle("Show Developer tab in Notch bar", isOn: $showCodingActivityInNotch)
+                Picker("Auto-refresh interval", selection: $codingAutoRefreshMinutes) {
+                    Text("15 minutes").tag(15)
+                    Text("30 minutes").tag(30)
+                    Text("1 hour").tag(60)
+                }
+            } header: {
+                Text("Notch Preferences")
+            }
+        }
+        .padding()
+        .navigationTitle("Developer")
     }
 }
 
@@ -1976,3 +2050,4 @@ func warningBadge(_ text: String, _ description: String) -> some View {
 #Preview {
     HUD()
 }
+

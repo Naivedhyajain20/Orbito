@@ -1220,46 +1220,92 @@ struct NotchNestWidgetsView: View {
     // MARK: ── 8. Camera / Mirror (Large 68x68 Frame) ──────────────────────────
 
     private var mirrorWidget: some View {
-        Button(action: {
-            vm.toggleCameraPreview()
-        }) {
+        VStack(spacing: 4) {
             ZStack(alignment: .topTrailing) {
-                CameraPreviewView(webcamManager: vm.webcamManager)
-                    .frame(width: 86, height: 86)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                vm.webcamManager.isSessionRunning ? Color.white.opacity(0.35) : Color.white.opacity(0.12),
-                                lineWidth: 1.2
-                            )
-                    )
-                    .shadow(
-                        color: vm.webcamManager.isSessionRunning ? Color.black.opacity(0.45) : Color.clear,
-                        radius: 6,
-                        y: 2
-                    )
-
                 if vm.webcamManager.isSessionRunning {
-                    // Live green pill
-                    HStack(spacing: 2.5) {
-                        Circle().fill(Color.green).frame(width: 5, height: 5)
-                        Text("LIVE")
-                            .font(.system(size: 6.5, weight: .heavy))
-                            .foregroundColor(.white)
+                    CameraPreviewView(webcamManager: vm.webcamManager)
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    vm.webcamManager.isRecording
+                                        ? Color.red
+                                        : Color.white.opacity(0.35),
+                                    lineWidth: 1.2
+                                )
+                        )
+                        .shadow(
+                            color: Color.black.opacity(0.45),
+                            radius: 6,
+                            y: 2
+                        )
+
+                    // Top-trailing LIVE / close button only
+                    if !vm.webcamManager.isRecording {
+                        Button(action: {
+                            vm.toggleCameraPreview()
+                        }) {
+                            HStack(spacing: 2.5) {
+                                Circle().fill(Color.green).frame(width: 5, height: 5)
+                                Text("LIVE")
+                                    .font(.system(size: 6.5, weight: .heavy))
+                                    .foregroundColor(.white)
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 6, weight: .bold))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .padding(.horizontal, 4.5)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.black.opacity(0.85)))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Stop Mirror Preview")
+                        .offset(x: -1, y: 3)
+                        .transition(.scale.combined(with: .opacity))
                     }
-                    .padding(.horizontal, 4.5)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.black.opacity(0.85)))
-                    .offset(x: -4, y: 4)
-                    .transition(.scale.combined(with: .opacity))
+                } else {
+                    Button(action: {
+                        vm.toggleCameraPreview()
+                    }) {
+                        CameraPreviewView(webcamManager: vm.webcamManager)
+                            .frame(width: 80, height: 80)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.12), lineWidth: 1.2)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Turn On Live Camera Mirror")
                 }
             }
-            .frame(maxWidth: .infinity)
-            .contentShape(Circle())
+
+            // REC timer shown BELOW the circle (fully inside notch, never clipped)
+            if vm.webcamManager.isSessionRunning && vm.webcamManager.isRecording {
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 5, height: 5)
+                    Text(formatRecDuration(vm.webcamManager.recordingDuration))
+                        .font(.system(size: 8, weight: .heavy, design: .monospaced))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2.5)
+                .background(Capsule().fill(Color.black.opacity(0.88)))
+                .overlay(Capsule().stroke(Color.red.opacity(0.5), lineWidth: 0.8))
+                .transition(.scale.combined(with: .opacity))
+            }
         }
-        .buttonStyle(PlainButtonStyle())
-        .help("Toggle Live Camera / Mirror")
+        .frame(maxWidth: .infinity)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: vm.webcamManager.isRecording)
+    }
+
+    private func formatRecDuration(_ duration: TimeInterval) -> String {
+        let mins = Int(duration) / 60
+        let secs = Int(duration) % 60
+        return String(format: "%02d:%02d", mins, secs)
     }
 
     // MARK: ── Helpers ────────────────────────────────────────────────────────

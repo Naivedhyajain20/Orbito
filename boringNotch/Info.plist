@@ -19,6 +19,10 @@
 	<string>https://TheBoredTeam.github.io/boring.notch/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>B1Y47t8C/v8ImurYA+9arEsuCrpxwJSviekiflMElbI=</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Orbito requires camera access to display the mirror preview in your notch.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Orbito requires microphone access to record audio with video recordings in the mirror widget.</string>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict/>

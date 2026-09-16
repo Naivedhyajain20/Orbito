@@ -27,6 +27,8 @@
 		NN0000080000000000000002 /* NotchNestSystemModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NN0000080000000000000001 /* NotchNestSystemModalView.swift */; };
 		NN0000090000000000000002 /* NotchNestRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NN0000090000000000000001 /* NotchNestRootView.swift */; };
 		NN0000100000000000000002 /* NotchNestSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NN0000100000000000000001 /* NotchNestSettingsView.swift */; };
+		NN0000110000000000000002 /* NotchNestCodingModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NN0000110000000000000001 /* NotchNestCodingModalView.swift */; };
+		CA0000010000000000000002 /* CodingActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000010000000000000001 /* CodingActivityManager.swift */; };
 		BB1F0001FACE1D01BB1F0001 /* FaceIDGlyphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0001FACE1D01AA1F0001 /* FaceIDGlyphView.swift */; };
 		BB1F0002FACE1D02BB1F0002 /* FaceIDNotchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0002FACE1D02AA1F0002 /* FaceIDNotchView.swift */; };
 		BB1F0003FACE1D03BB1F0003 /* FaceIDManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0003FACE1D03AA1F0003 /* FaceIDManager.swift */; };
@@ -253,6 +255,8 @@
 		NN0000080000000000000001 /* NotchNestSystemModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchNestSystemModalView.swift; sourceTree = "<group>"; };
 		NN0000090000000000000001 /* NotchNestRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchNestRootView.swift; sourceTree = "<group>"; };
 		NN0000100000000000000001 /* NotchNestSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchNestSettingsView.swift; sourceTree = "<group>"; };
+		NN0000110000000000000001 /* NotchNestCodingModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchNestCodingModalView.swift; sourceTree = "<group>"; };
+		CA0000010000000000000001 /* CodingActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodingActivityManager.swift; sourceTree = "<group>"; };
 		AA1F0001FACE1D01AA1F0001 /* FaceIDGlyphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceID/FaceIDGlyphView.swift"; sourceTree = "<group>"; };
 		AA1F0002FACE1D02AA1F0002 /* FaceIDNotchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceID/FaceIDNotchView.swift"; sourceTree = "<group>"; };
 		AA1F0003FACE1D03AA1F0003 /* FaceIDManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceIDManager.swift; sourceTree = "<group>"; };
@@ -651,6 +655,7 @@
 				14C08BB52C8DE42D000F8AA0 /* CalendarManager.swift */,
 				B1F0A0012E60000100000001 /* BrightnessManager.swift */,
 				59D8C23B2E589FAA00147B33 /* VolumeManager.swift */,
+				CA0000010000000000000001 /* CodingActivityManager.swift */,
 			);
 			path = managers;
 			sourceTree = "<group>";
@@ -880,6 +885,7 @@
 				NN0000080000000000000001 /* NotchNestSystemModalView.swift */,
 				NN0000090000000000000001 /* NotchNestRootView.swift */,
 				NN0000100000000000000001 /* NotchNestSettingsView.swift */,
+				NN0000110000000000000001 /* NotchNestCodingModalView.swift */,
 			);
 			path = NotchNest;
 			sourceTree = "<group>";
@@ -1130,6 +1136,8 @@
 				NN0000080000000000000002 /* NotchNestSystemModalView.swift in Sources */,
 				NN0000090000000000000002 /* NotchNestRootView.swift in Sources */,
 				NN0000100000000000000002 /* NotchNestSettingsView.swift in Sources */,
+				NN0000110000000000000002 /* NotchNestCodingModalView.swift in Sources */,
+				CA0000010000000000000002 /* CodingActivityManager.swift in Sources */,
 				14C08BB92C8DE4B1000F8AA0 /* BoringCalendar.swift in Sources */,
 				5955950D2E900ED800C66711 /* ApplicationRelauncher.swift in Sources */,
 				1100292A2E8691B400035A57 /* FileShareView.swift in Sources */,
