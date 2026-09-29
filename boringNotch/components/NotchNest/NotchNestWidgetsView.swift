@@ -16,6 +16,7 @@ struct NotchNestWidgetsView: View {
     @ObservedObject var notesModel = NotesStateViewModel.shared
     @ObservedObject var clipboardManager = ClipboardManager.shared
     @EnvironmentObject var vm: BoringViewModel
+    var currentMode: Binding<NotchNestMode>? = nil
 
     @Default(.showNestPlayer) var showNestPlayer
     @Default(.showNestCalendar) var showNestCalendar
@@ -23,14 +24,26 @@ struct NotchNestWidgetsView: View {
     @Default(.showNestClipboard) var showNestClipboard
     @Default(.showNestTimer) var showNestTimer
     @Default(.showNestCamera) var showNestCamera
+    @Default(.showNestWeather) var showNestWeather
+    @Default(.showNestPet) var showNestPet
+    @Default(.fullCoverPlayerStyle) var fullCoverPlayerStyle
     @Default(.nestShortcuts) var nestShortcuts
 
-    // Shortcuts Manager State
+    // Shortcuts & Folder Management State
     @State private var showShortcutManager: Bool = false
+    @State private var showFolderModal: Bool = false
+    @State private var selectedFolder: ShortcutItem? = nil
     @State private var newShortcutName: String = ""
     @State private var newShortcutType: ShortcutItem.ShortcutType = .url
     @State private var newShortcutTarget: String = ""
     @State private var newShortcutIcon: String = "globe"
+    @State private var newFolderItemName: String = ""
+    @State private var newFolderItemTarget: String = ""
+    @State private var newFolderItemType: ShortcutItem.ShortcutType = .app
+    @State private var isAddingToFolder: Bool = false
+
+    // Quick Ruler Timer State
+    @State private var quickTimerMinutes: Int = 5
 
     // Music Seeking
     @State private var isSeeking: Bool = false
@@ -59,76 +72,34 @@ struct NotchNestWidgetsView: View {
     // Clipboard Copy State
     @State private var copiedItemId: UUID? = nil
 
-    private var effectiveDuration: Double {
-        musicManager.songDuration > 0 ? musicManager.songDuration : 180
+    @Default(.nestComponentOrder) var componentOrder
+
+    /// Returns only the enabled components in user-defined order
+    private var activeComponents: [String] {
+        var order = componentOrder
+        for c in allNestComponents {
+            if !order.contains(c) {
+                order.append(c)
+            }
+        }
+        return order.filter { isNestComponentEnabled($0) }
     }
 
     var body: some View {
         ZStack {
-            // Main horizontal widget bar
-            HStack(spacing: 0) {
-                // 1. MUSIC PLAYER  ── ~252px
-                if showNestPlayer {
-                    playerWidget
-                        .frame(width: 252)
+            // Main horizontal widget bar — renders in user-defined order
+            HStack(spacing: CGFloat(Defaults[.widgetSpacing])) {
+                ForEach(Array(activeComponents.enumerated()), id: \.element) { index, comp in
+                    nestWidgetView(for: comp)
+                        .frame(width: nestComponentWidths[comp] ?? 0)
 
-                    if showNestCalendar || showNestNotes || showNestClipboard || showNestTimer || showNestCamera {
+                    if index < activeComponents.count - 1 {
                         divider
                     }
-                }
-
-                // 2. CALENDAR ── ~108px
-                if showNestCalendar {
-                    calendarWidget
-                        .frame(width: 108)
-
-                    // 3. SHORTCUTS & QUICK LAUNCHER ── ~46px
-                    shortcutsWidget
-                        .frame(width: 46)
-
-                    if showNestNotes || showNestClipboard || showNestTimer || showNestCamera {
-                        divider
-                    }
-                }
-
-                // 4. QUICK NOTES (Matching Screenshot Layout) ── ~175px
-                if showNestNotes {
-                    quickNotesWidget
-                        .frame(width: 175)
-
-                    if showNestClipboard || showNestTimer || showNestCamera {
-                        divider
-                    }
-                }
-
-                // 5. CLIPBOARD WIDGET (Live scrollable history with 1-tap copy) ── ~170px
-                if showNestClipboard {
-                    clipboardWidget
-                        .frame(width: 170)
-
-                    if showNestTimer || showNestCamera {
-                        divider
-                    }
-                }
-
-                // 6. POMODORO ── ~140px
-                if showNestTimer {
-                    pomodoroWidget
-                        .frame(width: 140)
-
-                    if showNestCamera {
-                        divider
-                    }
-                }
-
-                // 7. CAMERA / MIRROR (Large Circular preview) ── ~96px
-                if showNestCamera {
-                    mirrorWidget
-                        .frame(width: 96)
                 }
             }
             .frame(height: 114)
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 6)
             .padding(.vertical, 2)
 
             // Note Pop-Up Editor Modal
@@ -144,24 +115,77 @@ struct NotchNestWidgetsView: View {
                     .transition(.scale(scale: 0.96).combined(with: .opacity))
                     .zIndex(101)
             }
+
+            // Folder Detail Modal (up to 6 apps/websites)
+            if showFolderModal, let folder = selectedFolder {
+                folderModalPopup(folder)
+                    .transition(.scale(scale: 0.96).combined(with: .opacity))
+                    .zIndex(102)
+            }
         }
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isCreatingNewNote || editingNote != nil || showShortcutManager)
+        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isCreatingNewNote || editingNote != nil || showShortcutManager || showFolderModal)
     }
 
     // MARK: Vertical divider
 
     private var divider: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.08))
-            .frame(width: 1, height: 76)
-            .padding(.horizontal, 4)
+        RoundedRectangle(cornerRadius: 0.5)
+            .fill(
+                LinearGradient(
+                    colors: [Color.white.opacity(0.02), Color.white.opacity(0.10), Color.white.opacity(0.02)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(width: 1, height: 72)
+    }
+
+    private var effectiveDuration: Double {
+        musicManager.songDuration > 0 ? musicManager.songDuration : 180
+    }
+
+    /// Routes a component name to the correct widget view
+    @ViewBuilder
+    private func nestWidgetView(for name: String) -> some View {
+        switch name {
+        case "Player":
+            if fullCoverPlayerStyle {
+                FullCoverMusicPlayerView()
+            } else {
+                playerWidget
+            }
+        case "Calendar":
+            HStack(spacing: 0) {
+                calendarWidget
+                    .frame(width: 108)
+                shortcutsWidget
+                    .frame(width: 46)
+            }
+        case "Notes":
+            quickNotesWidget
+        case "Weather":
+            WeatherNestWidgetView()
+        case "Clipboard":
+            clipboardWidget
+        case "Timer":
+            compactTimerWidget
+        case "Pet":
+            PixelPetWidgetView()
+        case "Camera":
+            mirrorWidget
+        default:
+            EmptyView()
+        }
     }
 
     // MARK: ── 1. Music Player (Exact Match to Screenshot) ───────────────────
 
     private var playerWidget: some View {
-        HStack(spacing: 12) {
-            // Album Art (88x88 large square with rounded corners and Spotify badge)
+        let isCompact = Defaults[.compactPlayerMode]
+        let artSize: CGFloat = isCompact ? 56 : 68
+
+        return HStack(spacing: isCompact ? 8 : 10) {
+            // Album Art
             ZStack(alignment: .bottomTrailing) {
                 Button(action: { musicManager.openMusicApp() }) {
                     ZStack {
@@ -169,26 +193,26 @@ struct NotchNestWidgetsView: View {
                             Image(nsImage: musicManager.albumArt)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(width: 86, height: 86)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .frame(width: artSize, height: artSize)
+                                .clipShape(RoundedRectangle(cornerRadius: isCompact ? 10 : 13))
                                 .blur(radius: musicManager.isPlaying ? 0 : 1.0)
                                 .brightness(musicManager.isPlaying ? 0 : -0.12)
                                 .opacity(musicManager.isPlaying ? 1.0 : 0.88)
                                 .scaleEffect(musicManager.isPlaying ? 1.0 : 0.90)
                                 .animation(.spring(response: 0.38, dampingFraction: 0.70), value: musicManager.isPlaying)
                         } else {
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: isCompact ? 10 : 13)
                                 .fill(Color(white: 0.20))
-                                .frame(width: 86, height: 86)
+                                .frame(width: artSize, height: artSize)
                                 .overlay(
                                     Image(systemName: "music.note")
-                                        .font(.system(size: 30, weight: .semibold))
+                                        .font(.system(size: isCompact ? 20 : 26, weight: .semibold))
                                         .foregroundColor(Color(white: 0.50))
                                 )
                         }
                     }
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: isCompact ? 10 : 13)
                             .stroke(
                                 musicManager.isPlaying ? Color.white.opacity(0.14) : Color.white.opacity(0.04),
                                 lineWidth: 0.8
@@ -196,10 +220,9 @@ struct NotchNestWidgetsView: View {
                     )
                     .shadow(
                         color: musicManager.isPlaying ? .black.opacity(0.55) : .black.opacity(0.25),
-                        radius: musicManager.isPlaying ? 6 : 2,
-                        y: musicManager.isPlaying ? 3 : 1
+                        radius: musicManager.isPlaying ? 5 : 2,
+                        y: musicManager.isPlaying ? 2 : 1
                     )
-                    .animation(.spring(response: 0.38, dampingFraction: 0.70), value: musicManager.isPlaying)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .help("Open Music App")
@@ -207,29 +230,29 @@ struct NotchNestWidgetsView: View {
                 // Spotify-green badge
                 Circle()
                     .fill(Color(red: 30/255, green: 215/255, blue: 96/255))
-                    .frame(width: 17, height: 17)
-                    .overlay(Circle().stroke(Color.black, lineWidth: 1.5))
+                    .frame(width: isCompact ? 13 : 15, height: isCompact ? 13 : 15)
+                    .overlay(Circle().stroke(Color.black, lineWidth: 1.2))
                     .overlay(
                         Image(systemName: "waveform")
-                            .font(.system(size: 7.5, weight: .heavy))
+                            .font(.system(size: isCompact ? 6 : 7, weight: .heavy))
                             .foregroundColor(.black)
                     )
-                    .offset(x: 3, y: 3)
+                    .offset(x: 2, y: 2)
             }
 
             // Song info + scrubber + timestamps + transport controls
-            VStack(alignment: .leading, spacing: 3) {
-                // Song title (Dynamic dominant color from album artwork)
+            VStack(alignment: .leading, spacing: 2) {
+                // Song title
                 Text(musicManager.songTitle.isEmpty ? "Not Playing" : musicManager.songTitle)
-                    .font(.system(size: 13, weight: .heavy, design: .default))
+                    .font(.system(size: isCompact ? 11.5 : 12.5, weight: .heavy, design: .default))
                     .foregroundColor(musicAccentColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .animation(.smooth(duration: 0.35), value: musicManager.avgColor)
 
-                // Artist (Dynamic secondary tint from album artwork)
+                // Artist
                 Text(musicManager.artistName.isEmpty ? "—" : musicManager.artistName)
-                    .font(.system(size: 11.5, weight: .bold, design: .default))
+                    .font(.system(size: isCompact ? 10 : 11, weight: .bold, design: .default))
                     .foregroundColor(musicSecondaryColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -242,7 +265,7 @@ struct NotchNestWidgetsView: View {
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(Color.white.opacity(0.22))
-                            .frame(height: 3.5)
+                            .frame(height: 3)
 
                         Capsule()
                             .fill(Color.white)
@@ -250,7 +273,7 @@ struct NotchNestWidgetsView: View {
                                 width: geo.size.width * CGFloat(
                                     min(max((isSeeking ? seekPosition : musicManager.elapsedTime) / effectiveDuration, 0), 1)
                                 ),
-                                height: 3.5
+                                height: 3
                             )
                     }
                     .contentShape(Rectangle())
@@ -268,41 +291,40 @@ struct NotchNestWidgetsView: View {
                             }
                     )
                 }
-                .frame(height: 4)
+                .frame(height: 3)
 
-                // Timestamps (Dynamic color matching artwork)
+                // Timestamps
                 HStack {
                     Text(formatTime(isSeeking ? seekPosition : musicManager.elapsedTime))
-                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
                         .foregroundColor(musicSecondaryColor)
                     Spacer()
                     Text(formatTime(effectiveDuration))
-                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
                         .foregroundColor(musicSecondaryColor)
                 }
-                .animation(.smooth(duration: 0.35), value: musicManager.avgColor)
 
                 Spacer(minLength: 1)
 
-                // Transport controls: ◀◀ ▶/❚❚ ▶▶
-                HStack(spacing: 18) {
+                // Transport controls
+                HStack(spacing: isCompact ? 12 : 16) {
                     Button(action: { musicManager.previousTrack() }) {
                         Image(systemName: "backward.fill")
-                            .font(.system(size: 11.5, weight: .bold))
+                            .font(.system(size: isCompact ? 10 : 11, weight: .bold))
                             .foregroundColor(.white.opacity(0.92))
                     }
                     .buttonStyle(PlainButtonStyle())
 
                     Button(action: { musicManager.playPause() }) {
                         Image(systemName: musicManager.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 16.5, weight: .heavy))
+                            .font(.system(size: isCompact ? 14 : 16, weight: .heavy))
                             .foregroundColor(.white)
                     }
                     .buttonStyle(PlainButtonStyle())
 
                     Button(action: { musicManager.nextTrack() }) {
                         Image(systemName: "forward.fill")
-                            .font(.system(size: 11.5, weight: .bold))
+                            .font(.system(size: isCompact ? 10 : 11, weight: .bold))
                             .foregroundColor(.white.opacity(0.92))
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -310,7 +332,17 @@ struct NotchNestWidgetsView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .padding(.horizontal, 3)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                )
+        )
     }
 
     // MARK: ── 2. Calendar ────────────────────────────────────────────────────
@@ -375,31 +407,43 @@ struct NotchNestWidgetsView: View {
             // Display shortcuts up to max 6
             ForEach(nestShortcuts.prefix(6)) { item in
                 Button(action: {
-                    launchShortcut(item)
+                    if item.isFolder {
+                        selectedFolder = item
+                        showFolderModal = true
+                    } else {
+                        launchShortcut(item)
+                    }
                 }) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(Color(white: 0.14))
+                            .fill(item.isFolder ? Color(red: 0.15, green: 0.35, blue: 0.70).opacity(0.35) : Color(white: 0.14))
                             .frame(width: 26, height: 26)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                                    .stroke(item.isFolder ? Color(red: 0.35, green: 0.65, blue: 1.0).opacity(0.4) : Color.white.opacity(0.18), lineWidth: 0.8)
                             )
                         
                         SmartShortcutIconView(
                             name: item.name,
                             target: item.target,
                             type: item.type,
-                            fallbackIcon: item.iconName,
+                            fallbackIcon: item.isFolder ? "folder.fill" : item.iconName,
                             size: 19
                         )
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("\(item.name) (\(item.target))")
+                .help(item.isFolder ? "\(item.name) (Folder • \((item.folderItems ?? []).count)/6 apps)" : "\(item.name) (\(item.target))")
                 .contextMenu {
-                    Button("Open \(item.name)") {
-                        launchShortcut(item)
+                    if item.isFolder {
+                        Button("Open Folder \(item.name)") {
+                            selectedFolder = item
+                            showFolderModal = true
+                        }
+                    } else {
+                        Button("Open \(item.name)") {
+                            launchShortcut(item)
+                        }
                     }
                     Button("Delete \(item.name)", role: .destructive) {
                         withAnimation {
@@ -407,7 +451,7 @@ struct NotchNestWidgetsView: View {
                         }
                     }
                     Divider()
-                    Button("Manage Shortcuts (Max 6)...") {
+                    Button("Manage Shortcuts & Folders...") {
                         showShortcutManager = true
                     }
                 }
@@ -488,11 +532,15 @@ struct NotchNestWidgetsView: View {
     private func saveNewShortcut() {
         guard nestShortcuts.count < 6 else { return }
         var target = newShortcutTarget.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !target.isEmpty else { return }
+        if newShortcutType != .folder {
+            guard !target.isEmpty else { return }
+        }
 
         var name = newShortcutName.trimmingCharacters(in: .whitespacesAndNewlines)
         if name.isEmpty {
-            if newShortcutType == .app {
+            if newShortcutType == .folder {
+                name = "App Folder"
+            } else if newShortcutType == .app {
                 name = (target as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
             } else {
                 name = SmartShortcutIconResolver.autoExtractName(from: target)
@@ -506,12 +554,286 @@ struct NotchNestWidgetsView: View {
         let item = ShortcutItem(
             name: name,
             type: newShortcutType,
-            target: target,
-            iconName: newShortcutIcon
+            target: newShortcutType == .folder ? "folder" : target,
+            iconName: newShortcutType == .folder ? "folder.fill" : newShortcutIcon,
+            folderItems: newShortcutType == .folder ? [] : nil
         )
         nestShortcuts.append(item)
         newShortcutName = ""
         newShortcutTarget = ""
+    }
+
+    private func updateFolder(_ updatedFolder: ShortcutItem) {
+        if let idx = nestShortcuts.firstIndex(where: { $0.id == updatedFolder.id }) {
+            nestShortcuts[idx] = updatedFolder
+            selectedFolder = updatedFolder
+        }
+    }
+
+    private func chooseAppFileForFolder() {
+        let panel = NSOpenPanel()
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.application]
+        if panel.runModal() == .OK, let url = panel.url {
+            newFolderItemTarget = url.path
+            let appName = url.deletingPathExtension().lastPathComponent
+            if newFolderItemName.isEmpty {
+                newFolderItemName = appName
+            }
+            newFolderItemType = .app
+        }
+    }
+
+    private func addSubItemToFolder(_ folder: ShortcutItem) {
+        guard (folder.folderItems ?? []).count < 6 else { return }
+        var target = newFolderItemTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else { return }
+
+        var name = newFolderItemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty {
+            if newFolderItemType == .app {
+                name = (target as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+            } else {
+                name = SmartShortcutIconResolver.autoExtractName(from: target)
+            }
+        }
+
+        if newFolderItemType == .url && !target.hasPrefix("http://") && !target.hasPrefix("https://") && !target.contains("://") {
+            target = "https://" + target
+        }
+
+        let subItem = ShortcutItem(
+            name: name,
+            type: newFolderItemType,
+            target: target,
+            iconName: newFolderItemType == .app ? "app.badge.fill" : "globe"
+        )
+
+        var updated = folder
+        if updated.folderItems == nil {
+            updated.folderItems = []
+        }
+        updated.folderItems?.append(subItem)
+        updateFolder(updated)
+
+        newFolderItemName = ""
+        newFolderItemTarget = ""
+        isAddingToFolder = false
+    }
+
+    private func removeSubItemFromFolder(_ folder: ShortcutItem, itemId: UUID) {
+        var updated = folder
+        updated.folderItems?.removeAll { $0.id == itemId }
+        updateFolder(updated)
+    }
+
+    // MARK: ── Folder Modal Popup (Holds up to 6 Apps / URLs) ──────────────────
+
+    private func folderModalPopup(_ folder: ShortcutItem) -> some View {
+        let items = folder.folderItems ?? []
+        return ZStack {
+            // Dim background
+            Color.black.opacity(0.68)
+                .edgesIgnoringSafeArea(.all)
+                .onTapGesture {
+                    showFolderModal = false
+                    selectedFolder = nil
+                }
+
+            // Modal Card
+            VStack(alignment: .leading, spacing: 10) {
+                // Header
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color(red: 0.35, green: 0.75, blue: 1.0))
+                        Text(folder.name)
+                            .font(.system(size: 12.5, weight: .heavy))
+                            .foregroundColor(.white)
+                        Text("\(items.count)/6 ITEMS")
+                            .font(.system(size: 8, weight: .heavy))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule().fill(
+                                    items.count >= 6 ? Color.red.opacity(0.25) : Color.white.opacity(0.10)
+                                )
+                            )
+                            .foregroundColor(items.count >= 6 ? .red : .white.opacity(0.85))
+                    }
+
+                    Spacer()
+
+                    Button(action: {
+                        showFolderModal = false
+                        selectedFolder = nil
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.55))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                // Grid of items inside folder (up to 6 items: 3 columns x 2 rows)
+                if items.isEmpty {
+                    Text("This folder is empty. Add up to 6 apps or websites below.")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.white.opacity(0.45))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 12)
+                } else {
+                    let cols = [
+                        GridItem(.flexible(), spacing: 8),
+                        GridItem(.flexible(), spacing: 8),
+                        GridItem(.flexible(), spacing: 8)
+                    ]
+                    LazyVGrid(columns: cols, spacing: 8) {
+                        ForEach(items) { subItem in
+                            HStack(spacing: 7) {
+                                SmartShortcutIconView(
+                                    name: subItem.name,
+                                    target: subItem.target,
+                                    type: subItem.type,
+                                    fallbackIcon: subItem.iconName,
+                                    size: 22
+                                )
+                                .frame(width: 24, height: 24)
+
+                                Text(subItem.name)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+
+                                Spacer(minLength: 0)
+
+                                Button(action: {
+                                    removeSubItemFromFolder(folder, itemId: subItem.id)
+                                }) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.40))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .help("Remove from folder")
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color(white: 0.14))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                                    )
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                launchShortcut(subItem)
+                                showFolderModal = false
+                                selectedFolder = nil
+                            }
+                        }
+                    }
+                }
+
+                Divider().background(Color.white.opacity(0.10))
+
+                // Add to Folder Form
+                if items.count >= 6 {
+                    Text("Folder limit reached (max 6 items). Remove an item to add another.")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.orange.opacity(0.85))
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("ADD TO FOLDER (\(items.count)/6)")
+                                .font(.system(size: 8.5, weight: .heavy))
+                                .foregroundColor(.white.opacity(0.50))
+                            Spacer()
+                            Picker("", selection: $newFolderItemType) {
+                                Text("Mac App").tag(ShortcutItem.ShortcutType.app)
+                                Text("Web URL").tag(ShortcutItem.ShortcutType.url)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 140)
+                        }
+
+                        HStack(spacing: 6) {
+                            TextField(newFolderItemType == .app ? "App Name (e.g. Figma)" : "Name (e.g. YouTube)", text: $newFolderItemName)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(6)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.08)))
+
+                            if newFolderItemType == .app {
+                                Button(action: { chooseAppFileForFolder() }) {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "folder")
+                                        Text("Browse...")
+                                    }
+                                    .font(.system(size: 9.5, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.18)))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+
+                        HStack(spacing: 6) {
+                            TextField(newFolderItemType == .url ? "URL (e.g. https://youtube.com)" : "App Path or Name (e.g. /Applications/Figma.app)", text: $newFolderItemTarget)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(6)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.08)))
+                                .onChange(of: newFolderItemTarget) { _, val in
+                                    if newFolderItemName.isEmpty && !val.isEmpty {
+                                        if newFolderItemType == .app {
+                                            newFolderItemName = (val as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+                                        } else {
+                                            newFolderItemName = SmartShortcutIconResolver.autoExtractName(from: val)
+                                        }
+                                    }
+                                }
+
+                            Button(action: { addSubItemToFolder(folder) }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "plus")
+                                    Text("Add to Folder")
+                                }
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Capsule().fill(Color(red: 0.35, green: 0.75, blue: 1.0)))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .disabled(newFolderItemTarget.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(white: 0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.70), radius: 24, y: 8)
+            )
+            .frame(width: 440)
+        }
     }
 
     // MARK: ── Shortcuts & Quick Apps Modal (Max 6) ───────────────────────────
@@ -564,7 +886,7 @@ struct NotchNestWidgetsView: View {
 
                 // Existing Shortcuts List
                 if nestShortcuts.isEmpty {
-                    Text("No shortcuts added yet. Add up to 6 apps or URLs below.")
+                    Text("No shortcuts added yet. Add up to 6 apps, URLs, or folders below.")
                         .font(.system(size: 9.5, weight: .medium))
                         .foregroundColor(.white.opacity(0.45))
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -578,16 +900,26 @@ struct NotchNestWidgetsView: View {
                                         name: item.name,
                                         target: item.target,
                                         type: item.type,
-                                        fallbackIcon: item.iconName,
+                                        fallbackIcon: item.isFolder ? "folder.fill" : item.iconName,
                                         size: 20
                                     )
                                     .frame(width: 24, height: 24)
 
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(item.name)
-                                            .font(.system(size: 10.5, weight: .bold))
-                                            .foregroundColor(.white)
-                                        Text(item.target)
+                                        HStack(spacing: 4) {
+                                            Text(item.name)
+                                                .font(.system(size: 10.5, weight: .bold))
+                                                .foregroundColor(.white)
+                                            if item.isFolder {
+                                                Text("FOLDER (\((item.folderItems ?? []).count)/6)")
+                                                    .font(.system(size: 7.5, weight: .bold))
+                                                    .padding(.horizontal, 4)
+                                                    .padding(.vertical, 1)
+                                                    .background(Capsule().fill(Color.blue.opacity(0.3)))
+                                                    .foregroundColor(Color(red: 0.4, green: 0.75, blue: 1.0))
+                                            }
+                                        }
+                                        Text(item.isFolder ? "\((item.folderItems ?? []).count) apps/websites inside" : item.target)
                                             .font(.system(size: 8.5, weight: .medium))
                                             .foregroundColor(.white.opacity(0.50))
                                             .lineLimit(1)
@@ -596,14 +928,35 @@ struct NotchNestWidgetsView: View {
 
                                     Spacer()
 
-                                    // Launch test
-                                    Button(action: { launchShortcut(item) }) {
-                                        Image(systemName: "arrow.up.right.square")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.white.opacity(0.70))
+                                    if item.isFolder {
+                                        // Edit folder contents
+                                        Button(action: {
+                                            selectedFolder = item
+                                            showFolderModal = true
+                                            showShortcutManager = false
+                                        }) {
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "pencil")
+                                                Text("Items")
+                                            }
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundColor(Color(red: 0.35, green: 0.75, blue: 1.0))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(RoundedRectangle(cornerRadius: 5).fill(Color.blue.opacity(0.2)))
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        .help("Manage Folder Contents")
+                                    } else {
+                                        // Launch test
+                                        Button(action: { launchShortcut(item) }) {
+                                            Image(systemName: "arrow.up.right.square")
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundColor(.white.opacity(0.70))
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        .help("Open Shortcut")
                                     }
-                                    .buttonStyle(PlainButtonStyle())
-                                    .help("Open Shortcut")
 
                                     // Delete
                                     Button(action: {
@@ -652,7 +1005,7 @@ struct NotchNestWidgetsView: View {
                             .foregroundColor(.white.opacity(0.50))
 
                         HStack(spacing: 6) {
-                            TextField(newShortcutType == .app ? "Name (e.g. Spotify, Slack)" : "Name (e.g. ChatGPT, GitHub)", text: $newShortcutName)
+                            TextField(newShortcutType == .folder ? "Folder Name (e.g. Work, Tools)" : (newShortcutType == .app ? "Name (e.g. Spotify, Slack)" : "Name (e.g. ChatGPT, GitHub)"), text: $newShortcutName)
                                 .textFieldStyle(.plain)
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(.white)
@@ -662,41 +1015,48 @@ struct NotchNestWidgetsView: View {
                             Picker("", selection: $newShortcutType) {
                                 Text("Web URL").tag(ShortcutItem.ShortcutType.url)
                                 Text("Mac App").tag(ShortcutItem.ShortcutType.app)
+                                Text("Folder").tag(ShortcutItem.ShortcutType.folder)
                             }
                             .pickerStyle(.segmented)
-                            .frame(width: 140)
+                            .frame(width: 190)
                         }
 
-                        HStack(spacing: 6) {
-                            TextField(newShortcutType == .url ? "URL (e.g. https://spotify.com)" : "App Path or Name (e.g. /Applications/Spotify.app)", text: $newShortcutTarget)
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(6)
-                                .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.08)))
-                                .onChange(of: newShortcutTarget) { _, val in
-                                    if newShortcutName.isEmpty && !val.isEmpty {
-                                        if newShortcutType == .app {
-                                            newShortcutName = (val as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
-                                        } else {
-                                            newShortcutName = SmartShortcutIconResolver.autoExtractName(from: val)
+                        if newShortcutType == .folder {
+                            Text("A folder holds up to 6 apps or websites inside a single notch slot.")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.white.opacity(0.50))
+                        } else {
+                            HStack(spacing: 6) {
+                                TextField(newShortcutType == .url ? "URL (e.g. https://spotify.com)" : "App Path or Name (e.g. /Applications/Spotify.app)", text: $newShortcutTarget)
+                                    .textFieldStyle(.plain)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(6)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.08)))
+                                    .onChange(of: newShortcutTarget) { _, val in
+                                        if newShortcutName.isEmpty && !val.isEmpty {
+                                            if newShortcutType == .app {
+                                                newShortcutName = (val as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+                                            } else {
+                                                newShortcutName = SmartShortcutIconResolver.autoExtractName(from: val)
+                                            }
                                         }
                                     }
-                                }
 
-                            if newShortcutType == .app {
-                                Button(action: { chooseAppFile() }) {
-                                    HStack(spacing: 2) {
-                                        Image(systemName: "folder")
-                                        Text("Browse...")
+                                if newShortcutType == .app {
+                                    Button(action: { chooseAppFile() }) {
+                                        HStack(spacing: 2) {
+                                            Image(systemName: "folder")
+                                            Text("Browse...")
+                                        }
+                                        .font(.system(size: 9.5, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 5)
+                                        .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.18)))
                                     }
-                                    .font(.system(size: 9.5, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 5)
-                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.18)))
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .buttonStyle(PlainButtonStyle())
                             }
                         }
 
@@ -720,7 +1080,7 @@ struct NotchNestWidgetsView: View {
                                         name: newShortcutName,
                                         target: newShortcutTarget,
                                         type: newShortcutType,
-                                        fallbackIcon: newShortcutIcon,
+                                        fallbackIcon: newShortcutType == .folder ? "folder.fill" : newShortcutIcon,
                                         size: 18
                                     )
                                 }
@@ -740,7 +1100,7 @@ struct NotchNestWidgetsView: View {
                                 .background(Capsule().fill(Color(red: 0.35, green: 0.75, blue: 1.0)))
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .disabled(newShortcutTarget.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .disabled(newShortcutType == .folder ? newShortcutName.trimmingCharacters(in: .whitespaces).isEmpty : newShortcutTarget.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
                     }
                 }
@@ -755,7 +1115,7 @@ struct NotchNestWidgetsView: View {
                     )
                     .shadow(color: .black.opacity(0.70), radius: 24, y: 8)
             )
-            .frame(width: 420)
+            .frame(width: 440)
         }
     }
 
@@ -768,13 +1128,13 @@ struct NotchNestWidgetsView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "note.text")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color(red: 0.18, green: 0.84, blue: 0.38))
+                        .foregroundColor(Color(red: 0.98, green: 0.78, blue: 0.22))
                     Text("Notes")
-                        .font(.system(size: 13, weight: .heavy, design: .default))
+                        .font(.system(size: 12, weight: .heavy, design: .default))
                         .foregroundColor(.white)
                     if !notesModel.notes.isEmpty {
                         Text("(\(notesModel.notes.count))")
-                            .font(.system(size: 9.5, weight: .heavy, design: .monospaced))
+                            .font(.system(size: 9, weight: .heavy, design: .monospaced))
                             .foregroundColor(.white.opacity(0.60))
                     }
                 }
@@ -789,10 +1149,10 @@ struct NotchNestWidgetsView: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.16))
-                            .frame(width: 22, height: 22)
+                            .fill(Color.white.opacity(0.14))
+                            .frame(width: 20, height: 20)
                         Image(systemName: "plus")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
@@ -800,41 +1160,40 @@ struct NotchNestWidgetsView: View {
                 .help("Add New Note")
             }
 
-            // Scrollable List of Notes
+            // Scrollable List of Notes or Clean Empty State
             if notesModel.notes.isEmpty {
                 Button(action: {
                     noteDraftText = ""
                     editingNote = nil
                     isCreatingNewNote = true
                 }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "plus.circle.dashed")
-                            .font(.system(size: 13))
-                        Text("No notes • Tap + to write")
-                            .font(.system(size: 10.5, weight: .bold))
+                    VStack(spacing: 4) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(red: 0.98, green: 0.78, blue: 0.22).opacity(0.8))
+                        Text("Tap + to write note")
+                            .font(.system(size: 9.5, weight: .bold))
+                            .foregroundColor(.white.opacity(0.65))
                     }
-                    .foregroundColor(.white.opacity(0.60))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
                 .buttonStyle(PlainButtonStyle())
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 3.5) {
+                    VStack(spacing: 3) {
                         ForEach(notesModel.notes) { note in
-                            HStack(spacing: 6) {
-                                // Green accent indicator bar
+                            HStack(spacing: 5) {
                                 Capsule()
-                                    .fill(Color(red: 0.18, green: 0.84, blue: 0.38))
-                                    .frame(width: 3, height: 16)
+                                    .fill(Color(red: 0.98, green: 0.78, blue: 0.22))
+                                    .frame(width: 2.5, height: 15)
 
-                                // Note preview text (Clickable -> Pop-up)
                                 Button(action: {
                                     editingNote = note
                                     noteDraftText = note.content
                                     isCreatingNewNote = false
                                 }) {
                                     Text(note.content)
-                                        .font(.system(size: 11, weight: .bold, design: .default))
+                                        .font(.system(size: 10.5, weight: .bold, design: .default))
                                         .foregroundColor(.white.opacity(0.95))
                                         .lineLimit(1)
                                         .truncationMode(.tail)
@@ -842,50 +1201,44 @@ struct NotchNestWidgetsView: View {
                                 }
                                 .buttonStyle(PlainButtonStyle())
 
-                                // Time ago
                                 Text(note.updatedAt.formatted(date: .omitted, time: .shortened))
-                                    .font(.system(size: 8.5, weight: .bold))
-                                    .foregroundColor(.white.opacity(0.45))
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(.white.opacity(0.40))
 
-                                // Delete button for each note
                                 Button(action: {
                                     withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
                                         notesModel.delete(note)
                                     }
                                 }) {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 9.5))
-                                        .foregroundColor(.red.opacity(0.85))
-                                        .padding(2)
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.40))
                                 }
                                 .buttonStyle(PlainButtonStyle())
-                                .help("Delete note")
                             }
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3.5)
                             .background(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color(white: 0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.6)
-                                    )
+                                    .fill(Color(white: 0.14))
                             )
                         }
                     }
                 }
                 .frame(maxHeight: 74)
             }
-
-            Spacer(minLength: 0)
-
-            // Green underline status indicator
-            Rectangle()
-                .fill(Color(red: 0.18, green: 0.84, blue: 0.38))
-                .frame(width: 28, height: 2.5)
-                .cornerRadius(1.5)
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                )
+        )
     }
 
     // MARK: ── 5. Note Pop-Up Editor Modal ─────────────────────────────────────
@@ -1016,25 +1369,33 @@ struct NotchNestWidgetsView: View {
         editingNote = nil
     }
 
-    // MARK: ── 6. Clipboard Widget (Live History & 1-Tap Copy) ─────────────────
+    // MARK: ── 6. Clipboard Widget (Live History & 1-Tap Copy with Image Preview) ─────────────────
 
     private var clipboardWidget: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Header: "Clipboard" + Count + Trash Clear All
             HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: "doc.on.clipboard.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color(red: 0.35, green: 0.65, blue: 1.0))
-                    Text("Clipboard")
-                        .font(.system(size: 13, weight: .heavy, design: .default))
-                        .foregroundColor(.white)
-                    if !clipboardManager.filteredItems.isEmpty {
-                        Text("(\(clipboardManager.filteredItems.count))")
-                            .font(.system(size: 9.5, weight: .heavy, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.60))
+                Button(action: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                        currentMode?.wrappedValue = .clipboard
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.on.clipboard.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color(red: 0.35, green: 0.65, blue: 1.0))
+                        Text("Clipboard")
+                            .font(.system(size: 12, weight: .heavy, design: .default))
+                            .foregroundColor(.white)
+                        if !clipboardManager.filteredItems.isEmpty {
+                            Text("(\(clipboardManager.filteredItems.count))")
+                                .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.60))
+                        }
                     }
                 }
+                .buttonStyle(PlainButtonStyle())
+                .help("Open Categorized Clipboard Grid")
 
                 Spacer()
 
@@ -1067,27 +1428,59 @@ struct NotchNestWidgetsView: View {
                     VStack(spacing: 3.5) {
                         ForEach(clipboardManager.filteredItems.prefix(5)) { item in
                             HStack(spacing: 5) {
-                                // Blue accent indicator pill
+                                // Accent pill
                                 Capsule()
                                     .fill(Color(red: 0.35, green: 0.65, blue: 1.0))
-                                    .frame(width: 3, height: 16)
+                                    .frame(width: 2.5, height: 16)
 
-                                // Copied snippet text (1-Tap Copy)
-                                Button(action: {
-                                    clipboardManager.copy(item)
-                                    copiedItemId = item.id
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                                        if copiedItemId == item.id { copiedItemId = nil }
-                                    }
-                                }) {
-                                    Text(item.text ?? "Image Copied")
-                                        .font(.system(size: 11, weight: .bold, design: .default))
-                                        .foregroundColor(copiedItemId == item.id ? Color(red: 0.18, green: 0.84, blue: 0.38) : .white.opacity(0.95))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
+                                if let img = item.image {
+                                    // Live image thumbnail preview!
+                                    Image(nsImage: img)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 22, height: 22)
+                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                                        )
+
+                                    Button(action: {
+                                        clipboardManager.copy(item)
+                                        copiedItemId = item.id
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                            if copiedItemId == item.id { copiedItemId = nil }
+                                        }
+                                    }) {
+                                        VStack(alignment: .leading, spacing: 0.5) {
+                                            Text("Image Copied")
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundColor(copiedItemId == item.id ? Color(red: 0.18, green: 0.84, blue: 0.38) : .white.opacity(0.95))
+                                            Text("\(Int(img.size.width))×\(Int(img.size.height))")
+                                                .font(.system(size: 7.5, weight: .medium))
+                                                .foregroundColor(.white.opacity(0.45))
+                                        }
                                         .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                } else {
+                                    // Copied snippet text (1-Tap Copy)
+                                    Button(action: {
+                                        clipboardManager.copy(item)
+                                        copiedItemId = item.id
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                            if copiedItemId == item.id { copiedItemId = nil }
+                                        }
+                                    }) {
+                                        Text(item.text ?? "Copied Item")
+                                            .font(.system(size: 10.5, weight: .bold, design: .default))
+                                            .foregroundColor(copiedItemId == item.id ? Color(red: 0.18, green: 0.84, blue: 0.38) : .white.opacity(0.95))
+                                            .lineLimit(1)
+                                            .truncationMode(.tail)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .buttonStyle(PlainButtonStyle())
 
                                 // 1-Tap Copy Icon / Green Checkmark
                                 Button(action: {
@@ -1098,40 +1491,174 @@ struct NotchNestWidgetsView: View {
                                     }
                                 }) {
                                     Image(systemName: copiedItemId == item.id ? "checkmark" : "doc.on.doc")
-                                        .font(.system(size: 9.5, weight: .bold))
+                                        .font(.system(size: 9, weight: .bold))
                                         .foregroundColor(copiedItemId == item.id ? Color(red: 0.18, green: 0.84, blue: 0.38) : .white.opacity(0.70))
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 .help("Copy to clipboard")
                             }
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3.5)
                             .background(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color(white: 0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.6)
-                                    )
+                                    .fill(Color(white: 0.14))
                             )
                         }
                     }
                 }
                 .frame(maxHeight: 74)
             }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                )
+        )
+    }
+
+    // MARK: ── 7. LaunchMe Ruler Timer Widget (Interactive In-Place Timer) ─────────────
+
+    private var compactTimerWidget: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            // Header: Timer icon + Title + Expand to full ruler
+            HStack(spacing: 4) {
+                Image(systemName: "timer")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.orange)
+                Text("Timer")
+                    .font(.system(size: 12, weight: .heavy, design: .default))
+                    .foregroundColor(.white)
+                
+                Spacer()
+
+                if timerManager.hasActiveLiveActivity {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 6, height: 6)
+                }
+
+                Button(action: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                        currentMode?.wrappedValue = .timer
+                    }
+                }) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.white.opacity(0.45))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Open Full-Screen Ruler")
+            }
 
             Spacer(minLength: 0)
 
-            // Blue underline status indicator
-            Rectangle()
-                .fill(Color(red: 0.35, green: 0.65, blue: 1.0))
-                .frame(width: 28, height: 2.5)
-                .cornerRadius(1.5)
-        }
-        .padding(.horizontal, 4)
-    }
+            if timerManager.hasActiveLiveActivity {
+                // ACTIVE RUNNING TIMER: Show live ticking countdown + Stop button
+                VStack(spacing: 3) {
+                    Text(timerManager.liveActivityTimeString)
+                        .font(.system(size: 21, weight: .heavy, design: .rounded))
+                        .foregroundColor(.orange)
+                        .monospacedDigit()
 
-    // MARK: ── 7. Pomodoro ────────────────────────────────────────────────────
+                    Button(action: {
+                        timerManager.stopAllTimers()
+                    }) {
+                        Text("STOP")
+                            .font(.system(size: 8.5, weight: .heavy))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.red.opacity(0.75)))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                // IDLE TIMER: Mini ruler & presets right here to start immediately!
+                VStack(spacing: 3) {
+                    // Preset pills: 5m, 15m, 25m, 45m
+                    HStack(spacing: 3) {
+                        ForEach([5, 15, 25, 45], id: \.self) { mins in
+                            Button(action: {
+                                quickTimerMinutes = mins
+                            }) {
+                                Text("\(mins)m")
+                                    .font(.system(size: 8, weight: quickTimerMinutes == mins ? .heavy : .medium))
+                                    .foregroundColor(quickTimerMinutes == mins ? .black : .white.opacity(0.75))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule().fill(quickTimerMinutes == mins ? Color.orange : Color.white.opacity(0.12))
+                                    )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+
+                    // Stepper: [-] 15 min [+]
+                    HStack(spacing: 4) {
+                        Button(action: {
+                            if quickTimerMinutes > 1 { quickTimerMinutes -= 1 }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        Text("\(quickTimerMinutes) min")
+                            .font(.system(size: 11.5, weight: .heavy, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(minWidth: 42)
+
+                        Button(action: {
+                            if quickTimerMinutes < 120 { quickTimerMinutes += 1 }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+
+                    // START BUTTON: Starts timer immediately right here!
+                    Button(action: {
+                        timerManager.startQuickTimer(duration: TimeInterval(quickTimerMinutes * 60))
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 7.5, weight: .bold))
+                            Text("START")
+                                .font(.system(size: 8.5, weight: .heavy))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.orange))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CGFloat(Defaults[.widgetCornerRadius]), style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                )
+        )
+    }
 
     private var pomodoroColor: Color {
         timerManager.pomodoroPhase == .work ? Color(red: 0.18, green: 0.84, blue: 0.38) : Color(red: 0.35, green: 0.75, blue: 1.0)
@@ -1557,8 +2084,19 @@ struct SmartShortcutIconView: View {
 
     var body: some View {
         Group {
+            // 0. App / Website Folder
+            if type == .folder {
+                ZStack {
+                    RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                        .fill(Color(red: 0.18, green: 0.45, blue: 0.90).opacity(0.35))
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: size * 0.55, weight: .bold))
+                        .foregroundColor(Color(red: 0.40, green: 0.75, blue: 1.0))
+                }
+                .frame(width: size, height: size)
+            }
             // 1. Native Mac App Icon (Crisp OS-rendered original application icon)
-            if let appIcon = macAppIcon {
+            else if let appIcon = macAppIcon {
                 Image(nsImage: appIcon)
                     .resizable()
                     .aspectRatio(contentMode: .fit)

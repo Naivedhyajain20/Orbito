@@ -89,6 +89,8 @@ struct NotchNestClipboardModalView: View {
     private func clipboardCard(_ item: ClipboardItem) -> some View {
         let isRecentlyCopied = copiedItemId == item.id
         let isFirst = filteredItems.first?.id == item.id
+        let hasImage = item.image != nil
+        let fileImage = item.fileImagePreview
 
         Button(action: {
             clipboardManager.copy(item)
@@ -101,25 +103,71 @@ struct NotchNestClipboardModalView: View {
                 }
             }
         }) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(item.preview)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            ZStack(alignment: .bottomLeading) {
+                if hasImage, let img = item.image {
+                    // Full image thumbnail card
+                    Image(nsImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 142, height: 64)
+                        .clipped()
 
-                Spacer(minLength: 0)
+                    // Dark gradient overlay at bottom for text readability
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.7)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 30)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 
-                HStack {
+                } else if let fImg = fileImage {
+                    // File path image thumbnail
+                    Image(nsImage: fImg)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 142, height: 64)
+                        .clipped()
+
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.7)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 30)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
+
+                if !hasImage && fileImage == nil {
+                    // Text-only card
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 5) {
+                            Image(systemName: item.itemType.icon)
+                                .font(.system(size: 9))
+                                .foregroundColor(item.itemType.color.opacity(0.8))
+                            Text(item.preview)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(9)
+                }
+
+                // Bottom bar: timestamp + pin (always shown)
+                HStack(spacing: 4) {
                     if isRecentlyCopied {
                         Text("Copied!")
-                            .font(.system(size: 9.5, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                             .foregroundColor(Color(red: 0.35, green: 0.75, blue: 1.0))
                     } else {
                         Text(item.timeAgo)
-                            .font(.system(size: 9.5, weight: .medium))
-                            .foregroundColor(.white.opacity(0.45))
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.white.opacity(hasImage || fileImage != nil ? 0.9 : 0.45))
                     }
 
                     Spacer(minLength: 0)
@@ -127,11 +175,18 @@ struct NotchNestClipboardModalView: View {
                     if item.isPinned {
                         Image(systemName: "pin.fill")
                             .font(.system(size: 8))
-                            .foregroundColor(.yellow.opacity(0.8))
+                            .foregroundColor(.yellow.opacity(0.9))
+                    }
+
+                    if hasImage || fileImage != nil {
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 8))
+                            .foregroundColor(.green.opacity(0.9))
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 5)
             }
-            .padding(9)
             .frame(width: 142, height: 64)
             .background(
                 RoundedRectangle(cornerRadius: 10)
@@ -150,6 +205,7 @@ struct NotchNestClipboardModalView: View {
                             )
                     )
             )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(PlainButtonStyle())
         .contextMenu {

@@ -3,185 +3,282 @@
 //  boringNotch
 //
 //  Created by boringNotch on 07/09/2026.
+//  Redesigned with LaunchMe-style categorized tabs + horizontal grids.
 //
 
 import SwiftUI
 
 struct ClipboardView: View {
     @StateObject private var manager = ClipboardManager.shared
+    @State private var category: ClipboardCategory = .recent
+
+    var filtered: [ClipboardItem] {
+        let base = manager.filteredItems
+        return category == .recent ? base : base.filter { category.matches($0) }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search + clear
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                TextField("Search clipboard…", text: $manager.searchText)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .font(.caption)
-                    .foregroundColor(.white)
-
-                if !manager.items.isEmpty {
-                    Button {
-                        manager.clearUnpinned()
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.caption)
-                            .foregroundColor(.gray)
+            // ── Category Tabs ───────────────────────────────────────────
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(ClipboardCategory.allCases, id: \.self) { cat in
+                        categoryTab(cat)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("Clear unpinned items")
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.08))
-            .cornerRadius(8)
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-
-            Divider().opacity(0.25).padding(.top, 8)
-
-            if manager.filteredItems.isEmpty {
-                ClipboardEmptyState()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 5) {
-                        ForEach(manager.filteredItems) { item in
-                            ClipboardItemView(item: item)
+                    Spacer()
+                    if !manager.items.isEmpty {
+                        Button {
+                            manager.clearUnpinned()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "trash")
+                                Text("Clear all")
+                            }
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.red.opacity(0.85))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Color.red.opacity(0.12)))
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+
+            Divider().opacity(0.2)
+
+            // ── Content Grid ────────────────────────────────────────────
+            if filtered.isEmpty {
+                ClipboardEmptyState()
+            } else if category == .images {
+                imageGrid
+            } else if category == .colors {
+                colorGrid
+            } else {
+                textGrid
             }
         }
     }
-}
 
-struct ClipboardItemView: View {
-    @StateObject private var manager = ClipboardManager.shared
-    let item: ClipboardItem
-    @State private var hovering = false
-    @State private var copied = false
-
-    var body: some View {
-        HStack(spacing: 8) {
-            // Type icon
-            Image(systemName: item.isPinned ? "pin.fill" : item.itemType.icon)
-                .font(.system(size: 11))
-                .foregroundColor(item.isPinned ? .yellow : item.itemType.color)
-                .frame(width: 16)
-
-            // Content
-            Group {
-                if let image = item.image {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 80, maxHeight: 40)
-                        .cornerRadius(4)
-                } else {
-                    Text(item.preview)
-                        .font(.system(size: 11, design: item.itemType == .url ? .monospaced : .default))
-                        .foregroundColor(.white.opacity(0.9))
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+    // MARK: - Tab Pill
+    private func categoryTab(_ cat: ClipboardCategory) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                category = cat
             }
-
-            Spacer(minLength: 0)
-
-            if !hovering {
-                Text(item.timeAgo)
-                    .font(.system(size: 9))
-                    .foregroundColor(.gray)
-            }
-
-            // Action buttons (show on hover)
-            if hovering {
-                HStack(spacing: 4) {
-                    // Open link if URL
-                    if item.itemType == .url, let urlStr = item.text, let url = URL(string: urlStr) {
-                        Button {
-                            NSWorkspace.shared.open(url)
-                        } label: {
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.system(size: 10))
-                                .foregroundColor(.blue)
-                                .frame(width: 22, height: 22)
-                                .background(Color.white.opacity(0.12))
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("Open in browser")
-                    }
-
-                    // Copy
-                    Button {
-                        manager.copy(item)
-                        withAnimation { copied = true }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                            withAnimation { copied = false }
-                        }
-                    } label: {
-                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 10))
-                            .foregroundColor(copied ? .green : .white)
-                            .frame(width: 22, height: 22)
-                            .background(Color.white.opacity(0.12))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    // Pin
-                    Button {
-                        manager.togglePin(item)
-                    } label: {
-                        Image(systemName: item.isPinned ? "pin.slash" : "pin")
-                            .font(.system(size: 10))
-                            .foregroundColor(item.isPinned ? .yellow : .gray)
-                            .frame(width: 22, height: 22)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    // Delete
-                    Button {
-                        manager.delete(item)
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 9))
-                            .foregroundColor(.gray)
-                            .frame(width: 22, height: 22)
-                            .background(Color.white.opacity(0.08))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.8)))
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white.opacity(hovering ? 0.12 : item.isPinned ? 0.1 : 0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(item.isPinned ? Color.yellow.opacity(0.4) : Color.clear, lineWidth: 1)
+        } label: {
+            Text(cat.rawValue)
+                .font(.system(size: 11, weight: category == cat ? .semibold : .medium))
+                .foregroundColor(category == cat ? .black : .white.opacity(0.65))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(category == cat ? Color.white : Color.white.opacity(0.1))
                 )
-        )
-        .onHover { hovering = $0 }
-        .animation(.easeInOut(duration: 0.15), value: hovering)
-        .onTapGesture {
-            manager.copy(item)
-            withAnimation { copied = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                withAnimation { copied = false }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // MARK: - Image Grid (LaunchMe style: large horizontal image cards)
+    private var imageGrid: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 8) {
+                ForEach(filtered) { item in
+                    if let img = item.image {
+                        ZStack(alignment: .bottomLeading) {
+                            Image(nsImage: img)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 140, height: 120)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                            // Timestamp badge
+                            HStack(spacing: 3) {
+                                Image(systemName: "clock")
+                                    .font(.system(size: 7))
+                                Text(item.timeAgo)
+                                    .font(.system(size: 8, weight: .medium))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule().fill(Color.black.opacity(0.6))
+                            )
+                            .padding(8)
+
+                            // Pin / action buttons on hover (top right)
+                            if item.isPinned {
+                                VStack {
+                                    HStack {
+                                        Spacer()
+                                        Image(systemName: "star.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.yellow)
+                                            .padding(6)
+                                            .background(Circle().fill(Color.black.opacity(0.5)))
+                                    }
+                                    Spacer()
+                                }
+                                .padding(6)
+                            }
+                        }
+                        .onTapGesture { manager.copy(item) }
+                        .contextMenu {
+                            Button("Copy") { manager.copy(item) }
+                            Button(item.isPinned ? "Unpin" : "Pin") { manager.togglePin(item) }
+                            Button("Delete", role: .destructive) { manager.delete(item) }
+                        }
+                    }
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
+    }
+
+    // MARK: - Color Grid (hex swatch cards — exact LaunchMe match)
+    private var colorGrid: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 8) {
+                ForEach(filtered) { item in
+                    if let swatch = item.colorSwatch {
+                        ZStack(alignment: .bottomLeading) {
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(swatch)
+                                .frame(width: 140, height: 120)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Spacer()
+                                Text(item.text ?? "")
+                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.white)
+                                    .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+
+                                HStack(spacing: 3) {
+                                    Image(systemName: "clock")
+                                        .font(.system(size: 7))
+                                    Text(item.timeAgo)
+                                        .font(.system(size: 8, weight: .medium))
+                                }
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(
+                                    Capsule().fill(Color.black.opacity(0.35))
+                                )
+                            }
+                            .padding(10)
+
+                            // Pin badge
+                            if item.isPinned {
+                                VStack {
+                                    HStack {
+                                        Spacer()
+                                        Image(systemName: "star.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.yellow)
+                                            .padding(6)
+                                            .background(Circle().fill(Color.black.opacity(0.4)))
+                                    }
+                                    Spacer()
+                                }
+                                .padding(6)
+                            }
+                        }
+                        .onTapGesture { manager.copy(item) }
+                        .contextMenu {
+                            Button("Copy") { manager.copy(item) }
+                            Button(item.isPinned ? "Unpin" : "Pin") { manager.togglePin(item) }
+                            Button("Delete", role: .destructive) { manager.delete(item) }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
+    }
+
+    // MARK: - Text Grid (horizontal cards like LaunchMe's text clipboard)
+    private var textGrid: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 8) {
+                ForEach(filtered) { item in
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Type badge for pinned/URL items
+                        if item.isPinned || item.itemType == .url {
+                            HStack(spacing: 3) {
+                                if item.isPinned {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 7))
+                                        .foregroundColor(.yellow)
+                                }
+                                if item.itemType == .url {
+                                    Image(systemName: "link")
+                                        .font(.system(size: 7))
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+
+                        // Preview text
+                        if let image = item.image {
+                            Image(nsImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 130, maxHeight: 60)
+                                .cornerRadius(6)
+                        } else {
+                            Text(item.preview)
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.9))
+                                .lineLimit(5)
+                                .multilineTextAlignment(.leading)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        // Timestamp
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 7))
+                            Text(item.timeAgo)
+                                .font(.system(size: 8, weight: .medium))
+                        }
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule().fill(Color.white.opacity(0.08))
+                        )
+                    }
+                    .padding(10)
+                    .frame(width: 155, height: 120, alignment: .topLeading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white.opacity(0.06))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+                            )
+                    )
+                    .onTapGesture { manager.copy(item) }
+                    .contextMenu {
+                        Button("Copy") { manager.copy(item) }
+                        if item.itemType == .url, let urlStr = item.text, let url = URL(string: urlStr) {
+                            Button("Open in Browser") { NSWorkspace.shared.open(url) }
+                        }
+                        Button(item.isPinned ? "Unpin" : "Pin") { manager.togglePin(item) }
+                        Button("Delete", role: .destructive) { manager.delete(item) }
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
         }
     }
 }

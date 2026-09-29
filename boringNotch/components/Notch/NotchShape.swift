@@ -35,85 +35,53 @@ struct NotchShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
+        let topR = topCornerRadius
+        let botR = bottomCornerRadius
+        // Smoothing factor for cubic bezier (higher = rounder, Apple-like)
+        let smooth: CGFloat = 0.55
 
-        path.move(
-            to: CGPoint(
-                x: rect.minX,
-                y: rect.minY
-            )
+        // Start at top-left
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+
+        // Top-left corner (outer ear curve) — cubic for smoother transition
+        path.addCurve(
+            to: CGPoint(x: rect.minX + topR, y: rect.minY + topR),
+            control1: CGPoint(x: rect.minX + topR * smooth, y: rect.minY),
+            control2: CGPoint(x: rect.minX + topR, y: rect.minY + topR * (1 - smooth))
         )
 
-        path.addQuadCurve(
-            to: CGPoint(
-                x: rect.minX + topCornerRadius,
-                y: rect.minY + topCornerRadius
-            ),
-            control: CGPoint(
-                x: rect.minX + topCornerRadius,
-                y: rect.minY
-            )
+        // Left edge down to bottom-left corner
+        path.addLine(to: CGPoint(x: rect.minX + topR, y: rect.maxY - botR))
+
+        // Bottom-left corner — smooth cubic
+        path.addCurve(
+            to: CGPoint(x: rect.minX + topR + botR, y: rect.maxY),
+            control1: CGPoint(x: rect.minX + topR, y: rect.maxY - botR * (1 - smooth)),
+            control2: CGPoint(x: rect.minX + topR + botR * (1 - smooth), y: rect.maxY)
         )
 
-        path.addLine(
-            to: CGPoint(
-                x: rect.minX + topCornerRadius,
-                y: rect.maxY - bottomCornerRadius
-            )
+        // Bottom edge
+        path.addLine(to: CGPoint(x: rect.maxX - topR - botR, y: rect.maxY))
+
+        // Bottom-right corner — smooth cubic
+        path.addCurve(
+            to: CGPoint(x: rect.maxX - topR, y: rect.maxY - botR),
+            control1: CGPoint(x: rect.maxX - topR - botR * (1 - smooth), y: rect.maxY),
+            control2: CGPoint(x: rect.maxX - topR, y: rect.maxY - botR * (1 - smooth))
         )
 
-        path.addQuadCurve(
-            to: CGPoint(
-                x: rect.minX + topCornerRadius + bottomCornerRadius,
-                y: rect.maxY
-            ),
-            control: CGPoint(
-                x: rect.minX + topCornerRadius,
-                y: rect.maxY
-            )
+        // Right edge up to top-right corner
+        path.addLine(to: CGPoint(x: rect.maxX - topR, y: rect.minY + topR))
+
+        // Top-right corner — smooth cubic
+        path.addCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY),
+            control1: CGPoint(x: rect.maxX - topR, y: rect.minY + topR * (1 - smooth)),
+            control2: CGPoint(x: rect.maxX - topR * smooth, y: rect.minY)
         )
 
-        path.addLine(
-            to: CGPoint(
-                x: rect.maxX - topCornerRadius - bottomCornerRadius,
-                y: rect.maxY
-            )
-        )
-
-        path.addQuadCurve(
-            to: CGPoint(
-                x: rect.maxX - topCornerRadius,
-                y: rect.maxY - bottomCornerRadius
-            ),
-            control: CGPoint(
-                x: rect.maxX - topCornerRadius,
-                y: rect.maxY
-            )
-        )
-
-        path.addLine(
-            to: CGPoint(
-                x: rect.maxX - topCornerRadius,
-                y: rect.minY + topCornerRadius
-            )
-        )
-
-        path.addQuadCurve(
-            to: CGPoint(
-                x: rect.maxX,
-                y: rect.minY
-            ),
-            control: CGPoint(
-                x: rect.maxX - topCornerRadius,
-                y: rect.minY
-            )
-        )
-
-        path.addLine(
-            to: CGPoint(
-                x: rect.minX,
-                y: rect.minY
-            )
-        )
+        // Close to top-left
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
 
         return path
     }

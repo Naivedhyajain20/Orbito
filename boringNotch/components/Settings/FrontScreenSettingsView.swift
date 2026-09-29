@@ -196,6 +196,22 @@ struct FrontScreenSettingsView: View {
             }
 
             Section {
+                Defaults.Toggle(key: .enableSpaceBackgrounds) {
+                    Text("Sync Background with macOS Spaces")
+                }
+
+                if Defaults[.enableSpaceBackgrounds] {
+                    Text("Customize background appearance independently for each macOS Space.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    SpaceBackgroundPickerView()
+                }
+            } header: {
+                Text("Spaces Background Connection")
+            }
+
+            Section {
                 Picker("Active Profile Mode", selection: $modeManager.currentMode) {
                     ForEach(NotchMode.allCases) { mode in
                         Label(mode.rawValue, systemImage: mode.icon).tag(mode)

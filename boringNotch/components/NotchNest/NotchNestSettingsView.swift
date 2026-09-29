@@ -2,9 +2,12 @@ import SwiftUI
 import Defaults
 import LaunchAtLogin
 import KeyboardShortcuts
+import UniformTypeIdentifiers
 
 enum NotchNestSettingsTab: String, CaseIterable, Identifiable {
     case general = "General"
+    case widgets = "Widgets"
+    case wallpaper = "Wallpaper"
     case style = "Style"
     case player = "Player"
     case calendar = "Calendar"
@@ -22,6 +25,8 @@ enum NotchNestSettingsTab: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: return "gearshape.fill"
+        case .widgets: return "square.grid.2x2.fill"
+        case .wallpaper: return "photo.fill"
         case .style: return "eye.fill"
         case .player: return "play.fill"
         case .calendar: return "calendar"
@@ -40,6 +45,25 @@ enum NotchNestSettingsTab: String, CaseIterable, Identifiable {
 struct NotchNestSettingsView: View {
     @State private var selectedTab: NotchNestSettingsTab = .general
 
+    // Notch Customization & Wallpaper State
+    @Default(.globalNotchBackground) private var globalNotchBackground
+    @Default(.globalWallpaperPath) private var globalWallpaperPath
+    @Default(.enableSpaceBackgrounds) private var enableSpaceBackgrounds
+    @Default(.widgetSpacing) private var widgetSpacing
+    @Default(.widgetCornerRadius) private var widgetCornerRadius
+    @Default(.customOpenHeight) private var customOpenHeight
+    @Default(.compactPlayerMode) private var compactPlayerMode
+    @Default(.customCompanionPath) private var customCompanionPath
+    @Default(.customCompanionType) private var customCompanionType
+    @Default(.showCompanionText) private var showCompanionText
+    @Default(.customCompanionText) private var customCompanionText
+    @Default(.companionContentMode) private var companionContentMode
+    @Default(.companionMediaSize) private var companionMediaSize
+    @Default(.showDynamicIslandMusicAnimation) private var showDynamicIslandMusicAnimation
+    @Default(.enableTimerAlarm) private var enableTimerAlarm
+    @Default(.timerAlarmSoundName) private var timerAlarmSoundName
+    @Default(.timerAlarmVolume) private var timerAlarmVolume
+
     // General Toggles (Connected directly to real Defaults)
     @Default(.showNestPlayer) private var enablePlayer
     @Default(.showNestCamera) private var enableCamera
@@ -48,6 +72,9 @@ struct NotchNestSettingsView: View {
     @Default(.showNestTimer) private var enableTimer
     @Default(.showNestNotes) private var enableNotes
     @Default(.showNestClipboard) private var enableClipboard
+    @Default(.showNestWeather) private var enableWeather
+    @Default(.showNestPet) private var enablePet
+    @Default(.fullCoverPlayerStyle) private var fullCoverPlayer
 
     // System features
     @State private var launchAtLogin: Bool = LaunchAtLogin.isEnabled
@@ -58,7 +85,8 @@ struct NotchNestSettingsView: View {
     @Default(.hideFromScreenRecording) private var hideFromScreenRecording
     @Default(.showOnAllDisplays) private var showOnAllDisplays
     @State private var selectedDisplay: String = "Built-in Retina Display (Built-in)"
-    @State private var componentOrder: [String] = ["Player", "Calendar", "Notes", "Timer", "Camera"]
+    @Default(.nestComponentOrder) private var componentOrder
+    @State private var draggedComponent: String? = nil
 
     // Style tab states (Connected directly to real Defaults)
     @Default(.lightingEffect) private var lightingEffect
@@ -76,7 +104,7 @@ struct NotchNestSettingsView: View {
     @State private var selectedPlayer: String = "Spotify"
     @Default(.playerColorTinting) private var playerColorTinting
     @Default(.useMusicVisualizer) private var useMusicVisualizer
-    @State private var musicLiveActivity: Bool = true
+    @AppStorage("musicLiveActivityEnabled") private var musicLiveActivity: Bool = true
 
     // Pomodoro tab states
     @State private var focusDuration: Double = 25
@@ -85,6 +113,7 @@ struct NotchNestSettingsView: View {
     @State private var playTimerSound: Bool = true
     @State private var timerSoundName: String = "Marimba"
     @State private var pomodoroLiveActivity: Bool = true
+    @ObservedObject private var timerManager = TimerManager.shared
 
     // Camera tab states
     @Default(.mirrorShape) private var mirrorShape
@@ -115,39 +144,50 @@ struct NotchNestSettingsView: View {
     @State private var autoOpenOnDrag: Bool = true
     @State private var trayRetention: String = "1 Day"
 
+    // Crop preview state
+    @State private var showWallpaperCropSheet: Bool = false
+    @State private var showCompanionCropSheet: Bool = false
+    @State private var pendingCropImage: NSImage? = nil
+    @State private var pendingImageSourcePath: String = ""
+    @State private var pendingImageIsForWallpaper: Bool = true
+    @State private var pendingCompanionType: String = "image"
+
     var body: some View {
         VStack(spacing: 0) {
             // TOP TOOLBAR
-            HStack(spacing: 8) {
-                ForEach(NotchNestSettingsTab.allCases) { tab in
-                    Button(action: {
-                        selectedTab = tab
-                    }) {
-                        VStack(spacing: 4) {
-                            ZStack {
-                                if selectedTab == tab {
-                                    Circle()
-                                        .fill(Color.blue)
-                                        .frame(width: 28, height: 28)
-                                } else {
-                                    Circle()
-                                        .fill(Color.clear)
-                                        .frame(width: 28, height: 28)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(NotchNestSettingsTab.allCases) { tab in
+                        Button(action: {
+                            selectedTab = tab
+                        }) {
+                            VStack(spacing: 4) {
+                                ZStack {
+                                    if selectedTab == tab {
+                                        Circle()
+                                            .fill(Color.blue)
+                                            .frame(width: 28, height: 28)
+                                    } else {
+                                        Circle()
+                                            .fill(Color.clear)
+                                            .frame(width: 28, height: 28)
+                                    }
+
+                                    Image(systemName: tab.icon)
+                                        .font(.system(size: 12, weight: selectedTab == tab ? .bold : .medium))
+                                        .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.6))
                                 }
 
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 12, weight: selectedTab == tab ? .bold : .medium))
+                                Text(tab.rawValue)
+                                    .font(.system(size: 8.5, weight: selectedTab == tab ? .semibold : .regular))
                                     .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.6))
                             }
-
-                            Text(tab.rawValue)
-                                .font(.system(size: 8.5, weight: selectedTab == tab ? .semibold : .regular))
-                                .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.6))
+                            .frame(width: 50)
                         }
-                        .frame(width: 48)
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
+                .padding(.horizontal, 16)
             }
             .padding(.top, 14)
             .padding(.bottom, 12)
@@ -163,6 +203,10 @@ struct NotchNestSettingsView: View {
                     switch selectedTab {
                     case .general:
                         generalSection
+                    case .widgets:
+                        widgetsSection
+                    case .wallpaper:
+                        wallpaperSection
                     case .style:
                         styleSection
                     case .player:
@@ -193,6 +237,55 @@ struct NotchNestSettingsView: View {
         .frame(width: 800, height: 620)
         .background(Color(white: 0.10))
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showWallpaperCropSheet) {
+            if let img = pendingCropImage {
+                let notchAspect = max(1.5, openNotchSize.width / max(1, openNotchSize.height))
+                ImageCropPreviewSheet(
+                    sourceImage: img,
+                    targetAspectRatio: notchAspect,
+                    title: "Notch Wallpaper Preview & Crop",
+                    onConfirm: { croppedImage in
+                        if let savedPath = saveCroppedImageToAppSupport(croppedImage, originalPath: pendingImageSourcePath, subfolder: "wallpapers") {
+                            globalWallpaperPath = savedPath
+                        } else {
+                            globalWallpaperPath = pendingImageSourcePath
+                        }
+                        globalNotchBackground = .image
+                        enableLiquidGlass = false
+                        showWallpaperCropSheet = false
+                        pendingCropImage = nil
+                    },
+                    onCancel: {
+                        showWallpaperCropSheet = false
+                        pendingCropImage = nil
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $showCompanionCropSheet) {
+            if let img = pendingCropImage {
+                ImageCropPreviewSheet(
+                    sourceImage: img,
+                    targetAspectRatio: 1.0,  // pet widget is square
+                    title: "Companion Widget Preview & Crop",
+                    onConfirm: { croppedImage in
+                        if let savedPath = saveCroppedImageToAppSupport(croppedImage, originalPath: pendingImageSourcePath, subfolder: "companion") {
+                            customCompanionType = "image"
+                            customCompanionPath = savedPath
+                        } else {
+                            customCompanionType = "image"
+                            customCompanionPath = pendingImageSourcePath
+                        }
+                        showCompanionCropSheet = false
+                        pendingCropImage = nil
+                    },
+                    onCancel: {
+                        showCompanionCropSheet = false
+                        pendingCropImage = nil
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - 1. General Section
@@ -208,10 +301,21 @@ struct NotchNestSettingsView: View {
                     toggleCard(title: "Player", percent: "25%", isOn: $enablePlayer)
                     toggleCard(title: "Calendar", percent: "15%", isOn: $enableCalendar)
                     toggleCard(title: "Notes", percent: "20%", isOn: $enableNotes)
+                    toggleCard(title: "Weather", percent: "18%", isOn: $enableWeather)
                     toggleCard(title: "Clipboard", percent: "15%", isOn: $enableClipboard)
                     toggleCard(title: "Timer", percent: "15%", isOn: $enableTimer)
+                    toggleCard(title: "Pet & Quote", percent: "15%", isOn: $enablePet)
                     toggleCard(title: "Camera", percent: "10%", isOn: $enableCamera)
                 }
+
+                HStack {
+                    Toggle("Full-Cover Animated Album Art Style", isOn: $fullCoverPlayer)
+                        .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                    Spacer()
+                }
+                .padding(.top, 4)
 
                 Text("Enable or disable individual components. All modular components are customizable.")
                     .font(.system(size: 11))
@@ -237,31 +341,64 @@ struct NotchNestSettingsView: View {
                         Spacer()
 
                         HStack(spacing: 8) {
+                            let spaceUsed = computeSpaceUsed()
                             Capsule()
                                 .fill(Color.white.opacity(0.15))
                                 .frame(width: 100, height: 6)
                                 .overlay(alignment: .leading) {
                                     Capsule()
-                                        .fill(Color.green)
-                                        .frame(width: 92.5, height: 6)
+                                        .fill(spaceUsed > 90 ? Color.red : spaceUsed > 70 ? Color.orange : Color.green)
+                                        .frame(width: CGFloat(spaceUsed), height: 6)
                                 }
 
-                            Text("Space Used: 92.5%")
+                            Text("Space: \(Int(spaceUsed))%")
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(.white.opacity(0.7))
                         }
                     }
 
-                    HStack(spacing: 6) {
-                        ForEach(Array(componentOrder.enumerated()), id: \.offset) { index, comp in
-                            orderCard(title: comp, icon: iconForComponent(comp))
+                    // Draggable order cards — only enabled components
+                    let activeOrder = componentOrder.filter { isNestComponentEnabled($0) }
+                    if activeOrder.isEmpty {
+                        HStack {
+                            Image(systemName: "exclamationmark.circle")
+                                .foregroundColor(.orange)
+                            Text("No components enabled. Enable components above to arrange them.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                    } else {
+                        HStack(spacing: 6) {
+                            ForEach(Array(activeOrder.enumerated()), id: \.element) { index, comp in
+                                draggableOrderCard(title: comp, icon: nestComponentIcon(comp), index: index, total: activeOrder.count)
 
-                            if index < componentOrder.count - 1 {
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(.white.opacity(0.3))
+                                if index < activeOrder.count - 1 {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.3))
+                                }
                             }
                         }
+                    }
+
+                    // Reset button
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            componentOrder = allNestComponents
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text("Reset Order")
+                            }
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.white.opacity(0.08))
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(14)
@@ -403,90 +540,749 @@ struct NotchNestSettingsView: View {
         }
     }
 
-    // MARK: - 2. Style Section
-    private var styleSection: some View {
+    // MARK: - Widgets Section
+    private var widgetsSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Liquid Glass & Visual Appearance")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Widgets & Notch Customization")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                Text("Control widget spacing, notch height, corner radius, and enable or disable individual widgets.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.55))
+            }
 
-            VStack(spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Enable Liquid Glass effect")
+            // Dimensions & Spacing Sliders Card
+            VStack(alignment: .leading, spacing: 14) {
+                Text("DIMENSIONS & SPACING CONTROLS")
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundColor(.white.opacity(0.5))
+
+                // Widget Spacing
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Image(systemName: "arrow.left.and.line.vertical.and.arrow.right")
+                            .font(.system(size: 11))
+                            .foregroundColor(.blue)
+                        Text("Widget Spacing (Gap between widgets)")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.white)
-                        Text("Applies Apple specular rim highlight and dynamic blur to notch edges")
+                        Spacer()
+                        Text("\(Int(widgetSpacing)) pt")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.white.opacity(0.12)))
+                    }
+                    Slider(value: $widgetSpacing, in: 4...24, step: 1)
+                        .accentColor(.blue)
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                // Corner Radius
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Image(systemName: "square.dashed")
+                            .font(.system(size: 11))
+                            .foregroundColor(.blue)
+                        Text("Widget Corner Radius (Roundness)")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("\(Int(widgetCornerRadius)) pt")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.white.opacity(0.12)))
+                    }
+                    Slider(value: $widgetCornerRadius, in: 6...22, step: 1)
+                        .accentColor(.blue)
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                // Notch Expanded Height
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Image(systemName: "arrow.up.and.line.horizontal.and.arrow.down")
+                            .font(.system(size: 11))
+                            .foregroundColor(.blue)
+                        Text("Expanded Notch Height")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("\(Int(customOpenHeight)) pt")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.white.opacity(0.12)))
+                    }
+                    Slider(value: $customOpenHeight, in: 140...220, step: 2)
+                        .accentColor(.blue)
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                // Compact Player Mode Toggle
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Compact Music Player Layout")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Reduces player width so more widgets fit comfortably across your screen")
                             .font(.system(size: 10))
                             .foregroundColor(.white.opacity(0.5))
                     }
                     Spacer()
-                    Toggle("", isOn: $enableLiquidGlass)
+                    Toggle("", isOn: $compactPlayerMode)
                         .toggleStyle(SwitchToggleStyle(tint: .blue))
                 }
 
                 Divider().background(Color.white.opacity(0.06))
 
+                // Dynamic Island Music Animation Toggle
                 HStack {
-                    Text("Background Tint")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Picker("", selection: $backgroundTint) {
-                        Text("Black").tag("Black")
-                        Text("White").tag("White")
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .frame(width: 140)
-                }
-
-                Divider().background(Color.white.opacity(0.06))
-
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Opacity")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Dynamic Island Music Waveform")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.white)
-                        Spacer()
-                        Text("\(Int(glassOpacity * 100))%")
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.8))
+                        Text("Animated dynamic soundbars in the notch ear when music is playing")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
                     }
-                    Slider(value: $glassOpacity, in: 0.2...1.0)
-                        .accentColor(.blue)
+                    Spacer()
+                    Toggle("", isOn: $showDynamicIslandMusicAnimation)
+                        .toggleStyle(SwitchToggleStyle(tint: .blue))
                 }
             }
             .padding(14)
             .background(cardBackground)
 
-            // Notch Background & Polish
+            // Modular Widgets Grid
+            VStack(alignment: .leading, spacing: 12) {
+                Text("ENABLED WIDGETS")
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundColor(.white.opacity(0.5))
+
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 10) {
+                    toggleCard(title: "Music Player", percent: "Compact / Full", isOn: $enablePlayer)
+                    toggleCard(title: "Calendar & Shortcuts", percent: "Events & Folders", isOn: $enableCalendar)
+                    toggleCard(title: "Quick Notes Card", percent: "Add & View Notes", isOn: $enableNotes)
+                    toggleCard(title: "Live Weather Card", percent: "Conditions & Temp", isOn: $enableWeather)
+                    toggleCard(title: "Clipboard History", percent: "Text & Image Previews", isOn: $enableClipboard)
+                    toggleCard(title: "Quick Timer & Stopwatch", percent: "Ruler & Ear Pill", isOn: $enableTimer)
+                    toggleCard(title: "Pet & Quote", percent: "Companions", isOn: $enablePet)
+                    toggleCard(title: "Mirror Camera", percent: "Video Mirror", isOn: $enableCamera)
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+
+            // Reorder Widgets
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("COMPONENT ARRANGEMENT")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundColor(.white.opacity(0.5))
+                    Spacer()
+                    Button(action: {
+                        componentOrder = allNestComponents
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text("Reset")
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                let activeOrder = componentOrder.filter { isNestComponentEnabled($0) }
+                HStack(spacing: 6) {
+                    ForEach(Array(activeOrder.enumerated()), id: \.element) { index, comp in
+                        draggableOrderCard(title: comp, icon: nestComponentIcon(comp), index: index, total: activeOrder.count)
+                        if index < activeOrder.count - 1 {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.white.opacity(0.3))
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+        }
+    }
+
+    // MARK: - Wallpaper & Background Section
+    private var wallpaperSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Notch Background & Wallpaper")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                Text("Choose your notch style: Solid Black, Liquid Glass, Black Glass, or set your own custom wallpaper background.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.55))
+            }
+
+            // Global Background Style Card
+            VStack(alignment: .leading, spacing: 14) {
+                Text("GLOBAL NOTCH BACKGROUND")
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundColor(.white.opacity(0.5))
+
+                HStack(spacing: 10) {
+                    ForEach(NotchBackground.allCases, id: \.self) { bg in
+                        Button(action: {
+                            globalNotchBackground = bg
+                            if bg == .glass {
+                                enableLiquidGlass = true
+                            } else {
+                                enableLiquidGlass = false
+                            }
+                        }) {
+                            VStack(spacing: 6) {
+                                Image(systemName: bg.icon)
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text(bg.rawValue)
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 9)
+                                    .fill(globalNotchBackground == bg ? Color.blue.opacity(0.25) : Color.white.opacity(0.06))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 9)
+                                            .stroke(globalNotchBackground == bg ? Color.blue : Color.white.opacity(0.12), lineWidth: 1.2)
+                                    )
+                            )
+                            .foregroundColor(globalNotchBackground == bg ? .white : .white.opacity(0.75))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+
+                // If Custom Image selected or available
+                if globalNotchBackground == .image {
+                    Divider().background(Color.white.opacity(0.08))
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("CUSTOM WALLPAPER IMAGE")
+                            .font(.system(size: 9.5, weight: .heavy))
+                            .foregroundColor(.white.opacity(0.5))
+
+                        HStack(spacing: 14) {
+                            // Thumbnail Preview
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(white: 0.08))
+                                    .frame(width: 80, height: 50)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                    )
+
+                                if let path = globalWallpaperPath, !path.isEmpty, FileManager.default.fileExists(atPath: path) {
+                                    CustomCompanionMediaView(filePath: path, isFill: true)
+                                        .frame(width: 80, height: 50)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    VStack(spacing: 2) {
+                                        Image(systemName: "photo")
+                                            .font(.system(size: 14))
+                                        Text("No Image")
+                                            .font(.system(size: 8))
+                                    }
+                                    .foregroundColor(.white.opacity(0.4))
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 8) {
+                                    Button(action: {
+                                        chooseCustomWallpaper()
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "square.and.arrow.down")
+                                            Text("Choose Image, GIF or Video...")
+                                        }
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+
+                                    if globalWallpaperPath != nil && !(globalWallpaperPath?.isEmpty ?? true) {
+                                        Button(action: {
+                                            globalWallpaperPath = nil
+                                        }) {
+                                            HStack(spacing: 3) {
+                                                Image(systemName: "trash")
+                                                Text("Remove")
+                                            }
+                                            .font(.system(size: 10, weight: .medium))
+                                            .foregroundColor(.red.opacity(0.85))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 5)
+                                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.red.opacity(0.12)))
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+
+                                if let path = globalWallpaperPath, !path.isEmpty {
+                                    Text(URL(fileURLWithPath: path).lastPathComponent)
+                                        .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                } else {
+                                    Text("Supports PNG, JPG, GIF, MP4, MOV. Static images can be cropped to fit the notch perfectly.")
+                                        .font(.system(size: 9.5))
+                                        .foregroundColor(.white.opacity(0.45))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+
+            // Spaces Sync Section
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "macwindow.on.rectangle")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.blue)
+                            Text("Sync with macOS Spaces (Desktops)")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        Text("Automatically apply different backgrounds or wallpaper images to each macOS Space/Desktop.")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.white.opacity(0.55))
+                    }
+                    Spacer()
+                    Toggle("", isOn: $enableSpaceBackgrounds)
+                        .toggleStyle(SwitchToggleStyle(tint: .blue))
+                }
+
+                if enableSpaceBackgrounds {
+                    Divider().background(Color.white.opacity(0.08))
+
+                    // Embed SpaceBackgroundPickerView
+                    SpaceBackgroundPickerView()
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+
+            // Glass & Blur Tuning (Active when Glass or Black Glass is chosen)
+            if globalNotchBackground == .glass || globalNotchBackground == .blackGlass {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("LIQUID GLASS CONTROLS")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundColor(.white.opacity(0.5))
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Frosted Window Blur")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Blurs desktop wallpaper and windows beneath the notch")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $frostedBackground)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    }
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Specular Rim Highlight")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Apple-style subtle specular rim lighting along the notch curved edges")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $lightingEffect)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    }
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    HStack {
+                        Text("Glass Tint")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Picker("", selection: $backgroundTint) {
+                            Text("Black").tag("Black")
+                            Text("White").tag("White")
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .frame(width: 140)
+                    }
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Glass Opacity")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("\(Int(glassOpacity * 100))%")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        Slider(value: $glassOpacity, in: 0.15...1.0)
+                            .accentColor(.blue)
+                    }
+                }
+                .padding(14)
+                .background(cardBackground)
+            }
+
+            // MARK: - Companion Widget Media Slot (Pet / GIF / Video)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles.tv")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.pink)
+                            Text("Companion Widget Media (Pet Slot)")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        Text("Customize the animation widget in your notch (shown in Image 2): keep the animated Pixel Pet, or set your own custom Image, animated GIF, or looping Video (MP4 / MOV).")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.white.opacity(0.55))
+                    }
+                    Spacer()
+                }
+
+                HStack(spacing: 16) {
+                    // Preview
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(white: 0.08))
+                            .frame(width: 80, height: 80)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            )
+
+                        CustomCompanionMediaView(
+                            customPath: customCompanionPath,
+                            customType: customCompanionType,
+                            size: 64
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                chooseCompanionMedia()
+                            }) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "photo.badge.plus")
+                                    Text("Choose Image, GIF or Video...")
+                                }
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            if customCompanionPath != nil {
+                                Button(action: {
+                                    customCompanionPath = nil
+                                    customCompanionType = "pet"
+                                }) {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "arrow.counterclockwise")
+                                        Text("Reset to Pixel Pet")
+                                    }
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.12)))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+
+                        if let path = customCompanionPath, !path.isEmpty {
+                            Text(URL(fileURLWithPath: path).lastPathComponent)
+                                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                                .foregroundColor(.green.opacity(0.9))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        } else {
+                            Text("Currently showing default Pixel Pet animation.")
+                                .font(.system(size: 9.5))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+
+                        Text("Supports: GIF, MP4, MOV, PNG, JPG, WebP. Videos loop automatically with muted sound.")
+                            .font(.system(size: 9))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                // Display Mode: Fit Centered vs Fill Card
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Display Style")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Fit centered with adjustable size, or fill the entire widget card")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    Spacer()
+                    Picker("", selection: $companionContentMode) {
+                        Text("Fit Centered").tag("fit")
+                        Text("Fill Card").tag("fill")
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(width: 180)
+                }
+
+                if companionContentMode == "fit" {
+                    Divider().background(Color.white.opacity(0.06))
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Media Display Size")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("\(Int(companionMediaSize)) pt")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        Slider(value: $companionMediaSize, in: 36...96, step: 2)
+                            .accentColor(.pink)
+                    }
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                // Caption Text controls
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Show Caption Text")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Display text below the media (e.g. \"YOU ARE PERFECT JUST KEEP GOING\")")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    Spacer()
+                    Toggle("", isOn: $showCompanionText)
+                        .toggleStyle(SwitchToggleStyle(tint: .pink))
+                }
+
+                if showCompanionText {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Caption Message")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+
+                        HStack(spacing: 8) {
+                            TextField("Motivational message...", text: $customCompanionText)
+                                .textFieldStyle(PlainTextFieldStyle())
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.08)))
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.12), lineWidth: 1))
+
+                            Button("Reset") {
+                                customCompanionText = "YOU ARE PERFECT JUST KEEP GOING"
+                            }
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.12)))
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+        }
+    }
+
+    private func chooseCustomWallpaper() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            .image, .png, .jpeg, .gif, .movie, .quickTimeMovie, .mpeg4Movie
+        ]
+        if panel.runModal() == .OK, let url = panel.url {
+            let ext = url.pathExtension.lowercased()
+            if ext == "gif" || ["mp4", "mov", "m4v"].contains(ext) {
+                // Animated GIF or Video: copy to App Support wallpapers directory for guaranteed sandbox access
+                if let savedPath = copyMediaToAppSupport(sourceURL: url, subfolder: "wallpapers") {
+                    globalWallpaperPath = savedPath
+                } else {
+                    globalWallpaperPath = url.path
+                }
+                globalNotchBackground = .image
+                enableLiquidGlass = false
+            } else if let image = NSImage(contentsOfFile: url.path) {
+                // Static image: show crop preview sheet
+                pendingImageSourcePath = url.path
+                pendingImageIsForWallpaper = true
+                pendingCropImage = image
+                showWallpaperCropSheet = true
+            } else {
+                if let savedPath = copyMediaToAppSupport(sourceURL: url, subfolder: "wallpapers") {
+                    globalWallpaperPath = savedPath
+                } else {
+                    globalWallpaperPath = url.path
+                }
+                globalNotchBackground = .image
+                enableLiquidGlass = false
+            }
+        }
+    }
+
+    private func chooseCompanionMedia() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            .image, .png, .jpeg, .gif, .movie, .quickTimeMovie, .mpeg4Movie
+        ]
+        if panel.runModal() == .OK, let url = panel.url {
+            let ext = url.pathExtension.lowercased()
+            if ext == "gif" {
+                // GIFs: copy to App Support and apply directly
+                if let savedPath = copyMediaToAppSupport(sourceURL: url, subfolder: "companion") {
+                    customCompanionType = "gif"
+                    customCompanionPath = savedPath
+                } else {
+                    customCompanionType = "gif"
+                    customCompanionPath = url.path
+                }
+            } else if ["mp4", "mov", "m4v"].contains(ext) {
+                // Videos: copy to App Support and apply directly
+                if let savedPath = copyMediaToAppSupport(sourceURL: url, subfolder: "companion") {
+                    customCompanionType = "video"
+                    customCompanionPath = savedPath
+                } else {
+                    customCompanionType = "video"
+                    customCompanionPath = url.path
+                }
+            } else {
+                // Static images: show crop preview
+                if let image = NSImage(contentsOfFile: url.path) {
+                    pendingImageSourcePath = url.path
+                    pendingCompanionType = "image"
+                    pendingImageIsForWallpaper = false
+                    pendingCropImage = image
+                    showCompanionCropSheet = true
+                } else {
+                    if let savedPath = copyMediaToAppSupport(sourceURL: url, subfolder: "companion") {
+                        customCompanionType = "image"
+                        customCompanionPath = savedPath
+                    } else {
+                        customCompanionType = "image"
+                        customCompanionPath = url.path
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - 2. Style Section
+    private var styleSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Visual Style & Effects")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                Text("Customize drop shadow, notch header battery capsule, and visual polish.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.55))
+            }
+
+            // Quick link card informing user that Liquid Glass & Background are in Wallpaper tab
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18))
+                    .foregroundColor(.cyan)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Liquid Glass & Wallpaper Background")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white)
+                    Text("Liquid Glass, Black Glass, Custom Wallpaper, and Pet media slot are configured together in the Wallpaper tab.")
+                        .font(.system(size: 10.5))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+
+                Spacer()
+
+                Button(action: {
+                    selectedTab = .wallpaper
+                }) {
+                    Text("Go to Wallpaper →")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.blue.opacity(0.15)))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(14)
+            .background(cardBackground)
+
+            // Notch Appearance & Polish
             VStack(spacing: 14) {
                 HStack {
-                    Text("Frosted notch background")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Toggle("", isOn: $frostedBackground)
-                        .toggleStyle(SwitchToggleStyle(tint: .blue))
-                }
-
-                Divider().background(Color.white.opacity(0.06))
-
-                HStack {
-                    Text("Glass rim specular highlight")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Toggle("", isOn: $lightingEffect)
-                        .toggleStyle(SwitchToggleStyle(tint: .blue))
-                }
-
-                Divider().background(Color.white.opacity(0.06))
-
-                HStack {
-                    Text("Window drop shadow")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Window drop shadow")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Adds subtle elevation shadow behind the expanded notch")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
                     Spacer()
                     Toggle("", isOn: $enableShadow)
                         .toggleStyle(SwitchToggleStyle(tint: .blue))
@@ -495,9 +1291,14 @@ struct NotchNestSettingsView: View {
                 Divider().background(Color.white.opacity(0.06))
 
                 HStack {
-                    Text("Battery capsule in notch header")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Battery capsule in notch header")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Displays battery percentage and charging state in the top header")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
                     Spacer()
                     Toggle("", isOn: $showBatteryIndicator)
                         .toggleStyle(SwitchToggleStyle(tint: .blue))
@@ -573,6 +1374,22 @@ struct NotchNestSettingsView: View {
                         .foregroundColor(.white)
                     Spacer()
                     Toggle("", isOn: $playerColorTinting)
+                        .toggleStyle(SwitchToggleStyle(tint: .blue))
+                }
+
+                Divider().background(Color.white.opacity(0.06))
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Dynamic Island sound wave animation")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Smooth animated audio visualizer bars when music is playing in the notch")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    Spacer()
+                    Toggle("", isOn: $showDynamicIslandMusicAnimation)
                         .toggleStyle(SwitchToggleStyle(tint: .blue))
                 }
             }
@@ -670,28 +1487,95 @@ struct NotchNestSettingsView: View {
                 Divider().background(Color.white.opacity(0.06))
 
                 HStack {
-                    Text("Play completion sound")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Audible Timer & Pomodoro Alarm")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("Rings an audible alarm sound when countdown or focus session completes")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
                     Spacer()
-                    Toggle("", isOn: $playTimerSound)
+                    Toggle("", isOn: $enableTimerAlarm)
                         .toggleStyle(SwitchToggleStyle(tint: .green))
                 }
 
-                Divider().background(Color.white.opacity(0.06))
+                if enableTimerAlarm {
+                    Divider().background(Color.white.opacity(0.06))
 
-                HStack {
-                    Text("Timer Sound")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Picker("", selection: $timerSoundName) {
-                        Text("Marimba").tag("Marimba")
-                        Text("Bell").tag("Bell")
-                        Text("Ping").tag("Ping")
-                        Text("Digital").tag("Digital")
+                    HStack {
+                        Text("Alarm Sound")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Picker("", selection: $timerAlarmSoundName) {
+                            Text("Alarm").tag("Alarm")
+                            Text("Bell").tag("Bell")
+                            Text("Ping").tag("Ping")
+                            Text("Marimba").tag("Marimba")
+                            Text("Digital").tag("Digital")
+                            Text("Breeze").tag("Breeze")
+                            Text("SOS").tag("SOS")
+                        }
+                        .frame(width: 130)
+
+                        Button(action: {
+                            timerManager.testAlarmSound()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "speaker.wave.2.fill")
+                                Text("Test")
+                            }
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.green.opacity(0.25)))
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .frame(width: 140)
+
+                    Divider().background(Color.white.opacity(0.06))
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Alarm Volume")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("\(Int(timerAlarmVolume * 100))%")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        Slider(value: $timerAlarmVolume, in: 0.1...1.0)
+                            .accentColor(.green)
+                    }
+
+                    if timerManager.isAlarmRinging {
+                        Divider().background(Color.white.opacity(0.06))
+
+                        HStack {
+                            HStack(spacing: 6) {
+                                Image(systemName: "bell.badge.fill")
+                                    .foregroundColor(.red)
+                                Text("Alarm is currently ringing!")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.red)
+                            }
+                            Spacer()
+                            Button(action: {
+                                timerManager.stopAlarm()
+                            }) {
+                                Text("Stop Alarm")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.red))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
                 }
             }
             .padding(14)
@@ -1446,16 +2330,116 @@ struct NotchNestSettingsView: View {
         )
     }
 
-    private func iconForComponent(_ name: String) -> String {
-        switch name {
-        case "Player": return "play.circle"
-        case "Calendar": return "calendar"
-        case "Bookmarks": return "bookmark"
-        case "Notes": return "note.text"
-        case "Timer": return "timer"
-        case "Camera": return "camera"
-        default: return "app"
+    /// Draggable order card with left/right arrow buttons for reordering
+    private func draggableOrderCard(title: String, icon: String, index: Int, total: Int) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundColor(.white)
+            Text(title)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+                .lineLimit(1)
+
+            // Move arrows
+            HStack(spacing: 8) {
+                Button(action: { moveComponent(title, direction: -1) }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(index == 0 ? .white.opacity(0.15) : .white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+                .disabled(index == 0)
+
+                Button(action: { moveComponent(title, direction: 1) }) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(index == total - 1 ? .white.opacity(0.15) : .white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+                .disabled(index == total - 1)
+            }
         }
+        .frame(width: 68, height: 58)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(draggedComponent == title ? Color.blue.opacity(0.3) : Color(white: 0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(draggedComponent == title ? Color.blue.opacity(0.5) : Color.white.opacity(0.12), lineWidth: 0.8)
+                )
+        )
+        .onDrag {
+            draggedComponent = title
+            return NSItemProvider(object: title as NSString)
+        }
+        .onDrop(of: [.text], delegate: ComponentDropDelegate(
+            item: title,
+            componentOrder: $componentOrder,
+            draggedItem: $draggedComponent
+        ))
+    }
+
+    /// Compute space used as percentage (based on active component widths vs max notch width)
+    private func computeSpaceUsed() -> Double {
+        let maxWidth: Double = 1060.0
+        let activeOrder = componentOrder.filter { isNestComponentEnabled($0) }
+        var totalWidth: Double = 16 // base padding
+        for (index, comp) in activeOrder.enumerated() {
+            totalWidth += Double(nestComponentWidths[comp] ?? 0)
+            if index < activeOrder.count - 1 {
+                totalWidth += 9
+            }
+        }
+        return min((totalWidth / maxWidth) * 100.0, 100.0)
+    }
+
+    /// Move a component left (-1) or right (+1) in the order
+    private func moveComponent(_ name: String, direction: Int) {
+        guard let currentIndex = componentOrder.firstIndex(of: name) else { return }
+        
+        // Find the next/prev enabled component in componentOrder
+        let enabledInOrder = componentOrder.filter { isNestComponentEnabled($0) }
+        guard let enabledIndex = enabledInOrder.firstIndex(of: name) else { return }
+        let targetEnabledIndex = enabledIndex + direction
+        guard targetEnabledIndex >= 0, targetEnabledIndex < enabledInOrder.count else { return }
+        let targetName = enabledInOrder[targetEnabledIndex]
+        guard let targetIndex = componentOrder.firstIndex(of: targetName) else { return }
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            componentOrder.swapAt(currentIndex, targetIndex)
+        }
+    }
+
+    private func iconForComponent(_ name: String) -> String {
+        return nestComponentIcon(name)
     }
 }
 
+// MARK: - Drop Delegate for Component Reorder
+struct ComponentDropDelegate: DropDelegate {
+    let item: String
+    @Binding var componentOrder: [String]
+    @Binding var draggedItem: String?
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedItem = nil
+        return true
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged = draggedItem,
+              dragged != item,
+              let fromIndex = componentOrder.firstIndex(of: dragged),
+              let toIndex = componentOrder.firstIndex(of: item)
+        else { return }
+
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            componentOrder.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+}

@@ -9,6 +9,8 @@ import Foundation
 import UserNotifications
 import Combine
 import SwiftUI
+import Defaults
+import AppKit
 
 // MARK: - Models
 
@@ -121,6 +123,11 @@ final class TimerManager: ObservableObject {
     var pomodoroLongBreak: TimeInterval = 15 * 60
     var pomodoroLongBreakAfter: Int = 4
 
+    // Alarm Sound State
+    @Published var isAlarmRinging: Bool = false
+    @Published var alarmTimerLabel: String = ""
+    private var alarmTimerTask: Task<Void, Never>?
+
     // Private
     private var timerTask: Task<Void, Never>?
     private var stopwatchTask: Task<Void, Never>?
@@ -183,6 +190,24 @@ final class TimerManager: ObservableObject {
         timers.append(timer)
     }
 
+    func startQuickTimer(label: String = "Timer", duration: TimeInterval, color: String = "#FF9F0A") {
+        for idx in timers.indices {
+            timers[idx].isRunning = false
+        }
+        var timer = BoringTimer(label: label, duration: duration, color: color)
+        timer.isRunning = true
+        timers.insert(timer, at: 0)
+        startTickIfNeeded()
+    }
+
+    func stopAllTimers() {
+        for idx in timers.indices {
+            timers[idx].isRunning = false
+        }
+        timerTask?.cancel()
+        timerTask = nil
+    }
+
     func removeTimer(_ timer: BoringTimer) {
         timers.removeAll { $0.id == timer.id }
     }
@@ -206,7 +231,9 @@ final class TimerManager: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard let self = self else { return }
-                await self.tickTimers()
+                await MainActor.run {
+                    self.tickTimers()
+                }
             }
         }
     }
@@ -226,7 +253,7 @@ final class TimerManager: ObservableObject {
                 timers[idx].remainingTime = 0
                 timers[idx].isRunning = false
                 timers[idx].isFinished = true
-                sendTimerNotification(label: timers[idx].label)
+                triggerTimerAlarm(label: timers[idx].label)
             }
         }
     }
@@ -326,7 +353,9 @@ final class TimerManager: ObservableObject {
     }
 
     private func advancePomodoroPhase() {
-        sendPomodoroNotification(completedPhase: pomodoroPhase)
+        let completed = pomodoroPhase
+        triggerTimerAlarm(label: completed == .work ? "Focus session complete" : "Break complete")
+        sendPomodoroNotification(completedPhase: completed)
         switch pomodoroPhase {
         case .work:
             pomodoroCycles += 1
@@ -341,6 +370,65 @@ final class TimerManager: ObservableObject {
             pomodoroPhase = .work
             pomodoroRemaining = pomodoroWorkDuration
         }
+    }
+
+    // MARK: - Alarm System
+
+    func triggerTimerAlarm(label: String) {
+        alarmTimerLabel = label
+        sendTimerNotification(label: label)
+
+        guard Defaults[.enableTimerAlarm] else { return }
+
+        isAlarmRinging = true
+        let soundName = Defaults[.timerAlarmSoundName]
+        let volume = Float(Defaults[.timerAlarmVolume])
+
+        alarmTimerTask?.cancel()
+        alarmTimerTask = Task { [weak self] in
+            // Ring alarm in repeated pulses (up to 8 times or until stopped)
+            for _ in 0..<8 {
+                guard !Task.isCancelled else { break }
+                await MainActor.run {
+                    self?.playAlarmSoundOnce(soundName: soundName, volume: volume)
+                }
+                try? await Task.sleep(for: .milliseconds(900))
+            }
+            await MainActor.run {
+                self?.isAlarmRinging = false
+            }
+        }
+    }
+
+    func playAlarmSoundOnce(soundName: String, volume: Float) {
+        let sound: NSSound? = {
+            switch soundName {
+            case "Radar": return NSSound(named: "Submarine") ?? NSSound(named: "Ping")
+            case "Chime": return NSSound(named: "Hero") ?? NSSound(named: "Blow")
+            case "Ping": return NSSound(named: "Ping")
+            case "Glass": return NSSound(named: "Glass")
+            case "Hero": return NSSound(named: "Hero")
+            default: return NSSound(named: "Glass") ?? NSSound(named: "Ping")
+            }
+        }()
+        if let sound = sound {
+            sound.volume = max(0.1, min(1.0, volume))
+            sound.play()
+        } else {
+            NSSound.beep()
+        }
+    }
+
+    func stopAlarm() {
+        alarmTimerTask?.cancel()
+        alarmTimerTask = nil
+        isAlarmRinging = false
+    }
+
+    func testAlarmSound() {
+        let soundName = Defaults[.timerAlarmSoundName]
+        let volume = Float(Defaults[.timerAlarmVolume])
+        playAlarmSoundOnce(soundName: soundName, volume: volume)
     }
 
     var pomodoroString: String {
