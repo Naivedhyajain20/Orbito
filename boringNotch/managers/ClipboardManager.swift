@@ -29,7 +29,8 @@ struct ClipboardItem: Identifiable, Equatable {
     }
 
     var preview: String {
-        text?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120).description ?? "[Image]"
+        if image != nil { return "[Image]" }
+        return text?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120).description ?? "[Image]"
     }
 
     var itemType: ClipboardItemType {
@@ -37,8 +38,30 @@ struct ClipboardItem: Identifiable, Equatable {
         if let t = text {
             if URL(string: t) != nil && (t.hasPrefix("http://") || t.hasPrefix("https://")) { return .url }
             if t.contains("\n") || t.count > 100 { return .multiline }
+            // Check if it's a file path pointing to an image
+            if fileImagePreview != nil { return .image }
         }
         return .text
+    }
+
+    /// Attempts to load an image preview from the text if it's a file path to an image
+    var fileImagePreview: NSImage? {
+        guard let path = text else { return nil }
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Strip file:// scheme if present
+        let filePath: String
+        if trimmed.hasPrefix("file://") {
+            filePath = URL(string: trimmed)?.path ?? trimmed
+        } else if trimmed.hasPrefix("/") {
+            filePath = trimmed
+        } else {
+            return nil
+        }
+        let ext = (filePath as NSString).pathExtension.lowercased()
+        let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "heic", "heif", "webp", "ico"]
+        guard imageExtensions.contains(ext) else { return nil }
+        guard FileManager.default.fileExists(atPath: filePath) else { return nil }
+        return NSImage(contentsOfFile: filePath)
     }
 
     var timeAgo: String {
@@ -51,6 +74,7 @@ struct ClipboardItem: Identifiable, Equatable {
 
     static func == (lhs: ClipboardItem, rhs: ClipboardItem) -> Bool { lhs.id == rhs.id }
 }
+
 
 enum ClipboardItemType {
     case text, url, multiline, image
@@ -71,6 +95,47 @@ enum ClipboardItemType {
         case .multiline: return .purple
         case .image: return .green
         }
+    }
+}
+
+// MARK: - Category Filter (LaunchMe-style tabs)
+
+enum ClipboardCategory: String, CaseIterable {
+    case recent    = "Recent"
+    case images    = "Images"
+    case colors    = "Colors"
+    case text      = "Text"
+    case files     = "Files"
+    case favorites = "Favorites"
+
+    func matches(_ item: ClipboardItem) -> Bool {
+        switch self {
+        case .recent:    return true
+        case .images:    return item.itemType == .image
+        case .colors:    return item.text?.isHexColor == true
+        case .text:      return item.itemType == .text || item.itemType == .multiline || item.itemType == .url
+        case .files:     return item.text?.hasPrefix("file://") == true || item.text?.hasPrefix("/") == true
+        case .favorites: return item.isPinned
+        }
+    }
+}
+
+// MARK: - Hex Color Helpers
+
+extension ClipboardItem {
+    var colorSwatch: Color? {
+        guard let hex = text, hex.isHexColor else { return nil }
+        return Color(hex: hex)
+    }
+}
+
+extension String {
+    var isHexColor: Bool {
+        let h = trimmingCharacters(in: .whitespacesAndNewlines)
+        guard h.hasPrefix("#") else { return false }
+        let digits = h.dropFirst()
+        guard digits.count == 3 || digits.count == 6 else { return false }
+        return digits.allSatisfy { $0.isHexDigit }
     }
 }
 
@@ -137,11 +202,38 @@ final class ClipboardManager: ObservableObject {
 
         let sourceApp = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
 
-        // Try to get image first
+        // Try to get image data first (from screenshot, browser copy, etc.)
         if let imageData = pb.data(forType: .tiff) ?? pb.data(forType: .png),
            let image = NSImage(data: imageData) {
-            let item = ClipboardItem(text: nil, image: image, source: sourceApp)
-            addItem(item)
+            // Check if there's also a file URL — if so, store the path alongside the image
+            if let fileURLData = pb.data(forType: .fileURL),
+               let fileURL = URL(dataRepresentation: fileURLData, relativeTo: nil) {
+                let item = ClipboardItem(text: fileURL.path, image: image, source: sourceApp)
+                addItem(item)
+            } else {
+                let item = ClipboardItem(text: nil, image: image, source: sourceApp)
+                addItem(item)
+            }
+            return
+        }
+
+        // Check for file URLs (copied files from Finder)
+        if let fileURLData = pb.data(forType: .fileURL),
+           let fileURL = URL(dataRepresentation: fileURLData, relativeTo: nil) {
+            let path = fileURL.path
+            let ext = fileURL.pathExtension.lowercased()
+            let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "heic", "heif", "webp", "ico"]
+
+            // If it's an image file, capture its thumbnail
+            if imageExtensions.contains(ext), let image = NSImage(contentsOfFile: path) {
+                let item = ClipboardItem(text: path, image: image, source: sourceApp)
+                addItem(item)
+            } else {
+                // Non-image file — store the path as text
+                if let last = items.first(where: { !$0.isPinned }), last.text == path { return }
+                let item = ClipboardItem(text: path, source: sourceApp)
+                addItem(item)
+            }
             return
         }
 

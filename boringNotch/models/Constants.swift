@@ -113,7 +113,7 @@ extension Defaults.Keys {
     static let notchHeight = Key<CGFloat>("notchHeight", default: 32)
     //static let openLastTabByDefault = Key<Bool>("openLastTabByDefault", default: false)
     static let showOnLockScreen = Key<Bool>("showOnLockScreen", default: false)
-    static let hideFromScreenRecording = Key<Bool>("hideFromScreenRecording", default: true)
+    static let hideFromScreenRecording = Key<Bool>("hideFromScreenRecording", default: false)
     static let enableFaceIDUnlockAnimation = Key<Bool>("enableFaceIDUnlockAnimation", default: true)
     static let faceIDHaptics = Key<Bool>("faceIDHaptics", default: true)
     static let faceIDSound = Key<Bool>("faceIDSound", default: true)
@@ -238,7 +238,33 @@ extension Defaults.Keys {
     static let showNestCamera = Key<Bool>("showNestCamera", default: true)
     static let showNestBookmarks = Key<Bool>("showNestBookmarks", default: true)
     static let showNestClipboard = Key<Bool>("showNestClipboard", default: true)
+    static let showNestWeather = Key<Bool>("showNestWeather", default: true)
+    static let showNestPet = Key<Bool>("showNestPet", default: true)
+    static let nestComponentOrder = Key<[String]>("nestComponentOrder", default: [
+        "Player", "Calendar", "Notes", "Weather", "Clipboard", "Timer", "Pet", "Camera"
+    ])
+    static let enableSpaceBackgrounds = Key<Bool>("enableSpaceBackgrounds", default: false)
+    static let spaceBackgrounds = Key<[String: String]>("spaceBackgrounds", default: [:])
+    static let spaceWallpaperPaths = Key<[String: String]>("spaceWallpaperPaths", default: [:])
+    static let globalNotchBackground = Key<NotchBackground>("globalNotchBackground", default: .blackGlass)
+    static let globalWallpaperPath = Key<String?>("globalWallpaperPath", default: nil)
+    static let fullCoverPlayerStyle = Key<Bool>("fullCoverPlayerStyle", default: true)
+
+    // MARK: Widget Customization
+    static let widgetSpacing = Key<Double>("widgetSpacing", default: 8.0)
+    static let widgetCornerRadius = Key<Double>("widgetCornerRadius", default: 12.0)
+    static let compactPlayerMode = Key<Bool>("compactPlayerMode", default: false)
     static let customOpenHeight = Key<Double>("customOpenHeight", default: 168.0)
+    static let customCompanionPath = Key<String?>("customCompanionPath", default: nil)
+    static let customCompanionType = Key<String>("customCompanionType", default: "pet")
+    static let showCompanionText = Key<Bool>("showCompanionText", default: true)
+    static let customCompanionText = Key<String>("customCompanionText", default: "YOU ARE PERFECT JUST KEEP GOING")
+    static let companionContentMode = Key<String>("companionContentMode", default: "fit")
+    static let companionMediaSize = Key<Double>("companionMediaSize", default: 56.0)
+    static let showDynamicIslandMusicAnimation = Key<Bool>("showDynamicIslandMusicAnimation", default: true)
+    static let enableTimerAlarm = Key<Bool>("enableTimerAlarm", default: true)
+    static let timerAlarmSoundName = Key<String>("timerAlarmSoundName", default: "Alarm")
+    static let timerAlarmVolume = Key<Double>("timerAlarmVolume", default: 1.0)
     static let nestShortcuts = Key<[ShortcutItem]>("nestShortcuts", default: [
         ShortcutItem(name: "Spotify", type: .app, target: "/Applications/Spotify.app", iconName: "music.note"),
         ShortcutItem(name: "ChatGPT", type: .url, target: "https://chatgpt.com", iconName: "bubble.left.and.sparkles.fill"),
@@ -266,9 +292,60 @@ struct ShortcutItem: Codable, Identifiable, Hashable, Defaults.Serializable {
     var type: ShortcutType
     var target: String
     var iconName: String
+    var folderItems: [ShortcutItem]? = nil  // Folder support: up to 6 sub-items
+
+    var isFolder: Bool { type == .folder || (folderItems != nil && !(folderItems?.isEmpty ?? true)) }
 
     enum ShortcutType: String, Codable, CaseIterable {
         case url
         case app
+        case folder
+    }
+}
+
+// MARK: - Nest Component Helpers
+
+/// Width budget for each NotchNest component (balanced for even distribution without clipping)
+let nestComponentWidths: [String: CGFloat] = [
+    "Player": 185,
+    "Calendar": 145,   // 100 calendar + 45 shortcuts
+    "Notes": 145,
+    "Weather": 135,
+    "Clipboard": 140,
+    "Timer": 125,
+    "Pet": 110,
+    "Camera": 90
+]
+
+/// All known component names in canonical order
+let allNestComponents: [String] = ["Player", "Calendar", "Notes", "Weather", "Clipboard", "Timer", "Pet", "Camera"]
+
+/// Check if a named component is currently enabled via its Defaults toggle
+func isNestComponentEnabled(_ name: String) -> Bool {
+    switch name {
+    case "Player":    return Defaults[.showNestPlayer]
+    case "Calendar":  return Defaults[.showNestCalendar]
+    case "Notes":     return Defaults[.showNestNotes]
+    case "Weather":   return Defaults[.showNestWeather]
+    case "Clipboard": return Defaults[.showNestClipboard]
+    case "Timer":     return Defaults[.showNestTimer]
+    case "Pet":       return Defaults[.showNestPet]
+    case "Camera":    return Defaults[.showNestCamera]
+    default:          return false
+    }
+}
+
+/// SF Symbol icon for a component name
+func nestComponentIcon(_ name: String) -> String {
+    switch name {
+    case "Player":    return "play.circle"
+    case "Calendar":  return "calendar"
+    case "Notes":     return "note.text"
+    case "Weather":   return "cloud.sun.fill"
+    case "Clipboard": return "doc.on.clipboard"
+    case "Timer":     return "timer"
+    case "Pet":       return "sparkles"
+    case "Camera":    return "camera"
+    default:          return "app"
     }
 }

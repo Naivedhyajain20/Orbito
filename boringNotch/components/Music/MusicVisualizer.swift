@@ -50,9 +50,11 @@ class AudioSpectrum: NSView {
     
     private func startAnimating() {
         guard animationTimer == nil else { return }
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.3, repeats: true) { [weak self] _ in
             self?.updateBars()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        animationTimer = timer
     }
     
     private func stopAnimating() {
@@ -112,8 +114,40 @@ struct AudioSpectrumView: NSViewRepresentable {
     }
 }
 
+// MARK: - Native SwiftUI Dynamic Island Music Waveform
+struct DynamicIslandWaveformView: View {
+    let isPlaying: Bool
+    var color: Color = .white
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.04)) { timeline in
+            let now = isPlaying ? timeline.date.timeIntervalSinceReferenceDate : 0
+            HStack(alignment: .center, spacing: 2.2) {
+                waveformBar(time: now, speed: 7.2, offset: 0.0, baseHeight: 0.7)
+                waveformBar(time: now, speed: 9.5, offset: 1.8, baseHeight: 1.0)
+                waveformBar(time: now, speed: 6.4, offset: 3.4, baseHeight: 0.6)
+                waveformBar(time: now, speed: 8.8, offset: 4.8, baseHeight: 0.9)
+            }
+            .frame(width: 18, height: 14, alignment: .center)
+        }
+    }
+
+    private func waveformBar(time: Double, speed: Double, offset: Double, baseHeight: CGFloat) -> some View {
+        let normalized: Double = {
+            guard isPlaying else { return 0.15 }
+            let val = (sin(time * speed + offset) + cos(time * (speed * 0.7) + offset * 0.5) + 2.0) / 4.0
+            return max(0.12, min(1.0, val))
+        }()
+        let barHeight = max(2.5, CGFloat(normalized) * 11.0 * baseHeight + 2.0)
+        return RoundedRectangle(cornerRadius: 1.2, style: .continuous)
+            .fill(color)
+            .frame(width: 2.4, height: barHeight)
+    }
+}
+
 #Preview {
     AudioSpectrumView(isPlaying: .constant(true))
         .frame(width: 16, height: 20)
         .padding()
 }
+

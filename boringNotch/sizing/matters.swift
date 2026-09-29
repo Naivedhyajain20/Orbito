@@ -14,7 +14,43 @@ let batterySneakSize: CGSize = .init(width: 160, height: 1)
 
 let shadowPadding: CGFloat = 20
 var openNotchSize: CGSize {
-    CGSize(width: 1060, height: 168)
+    var order = Defaults[.nestComponentOrder]
+    for c in allNestComponents {
+        if !order.contains(c) {
+            order.append(c)
+        }
+    }
+    let activeComponents = order.filter { isNestComponentEnabled($0) }
+    let targetHeight = CGFloat(Defaults[.customOpenHeight])
+
+    if activeComponents.isEmpty {
+        return CGSize(width: 420, height: targetHeight)
+    }
+
+    let spacing = CGFloat(Defaults[.widgetSpacing])
+    let isCompact = Defaults[.compactPlayerMode]
+
+    // Sum widths of active components
+    var totalWidth: CGFloat = 32 // horizontal padding
+    for (index, comp) in activeComponents.enumerated() {
+        var w = nestComponentWidths[comp] ?? 130
+        if comp == "Player" && isCompact {
+            w = 160
+        }
+        totalWidth += w
+        if index < activeComponents.count - 1 {
+            totalWidth += spacing + 1 // divider + spacing
+        }
+    }
+
+    let screenWidth = NSScreen.main?.frame.width ?? 1440
+    let minWidth: CGFloat = 420
+    let maxWidth: CGFloat = max(1120, screenWidth - 40)
+
+    return CGSize(
+        width: min(max(totalWidth, minWidth), maxWidth),
+        height: targetHeight
+    )
 }
 let windowSize: CGSize = .init(width: 1120, height: 480)
 let cornerRadiusInsets: (opened: (top: CGFloat, bottom: CGFloat), closed: (top: CGFloat, bottom: CGFloat)) = (opened: (top: 18, bottom: 32), closed: (top: 6, bottom: 14))

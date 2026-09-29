@@ -77,6 +77,19 @@ class BoringViewModel: NSObject, ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self = self, self.notchState == .open else { return }
+                let targetWidth = openNotchSize.width
+                if abs(self.notchSize.width - targetWidth) > 0.5 {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        self.notchSize = CGSize(width: targetWidth, height: CGFloat(Defaults[.customOpenHeight]))
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
     
     private func setupDetectorObserver() {

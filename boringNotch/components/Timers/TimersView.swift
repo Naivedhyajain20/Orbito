@@ -11,12 +11,13 @@ import SwiftUI
 
 struct TimersView: View {
     @StateObject private var manager = TimerManager.shared
-    @State private var selectedSegment: Int = 0
+    @State private var selectedSegment: Int = 3
 
     var body: some View {
         VStack(spacing: 0) {
             // Segment picker
             Picker("", selection: $selectedSegment) {
+                Text("Quick").tag(3)
                 Text("Timers").tag(0)
                 Text("Stopwatch").tag(1)
                 Text("Pomodoro").tag(2)
@@ -29,6 +30,7 @@ struct TimersView: View {
             Divider().opacity(0.3)
 
             switch selectedSegment {
+            case 3: QuickTimerRulerView()
             case 0: CountdownTimersPanel()
             case 1: StopwatchPanel()
             case 2: PomodoroPanel()

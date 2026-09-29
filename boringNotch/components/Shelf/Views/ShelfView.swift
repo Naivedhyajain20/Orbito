@@ -90,8 +90,12 @@ struct ShelfView: View {
                 style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [10])
             )
             .overlay {
-                content
-                    .padding()
+                VStack(spacing: 8) {
+                    QuickDropZonesView()
+                    content
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
             }
             .transaction { transaction in
                 transaction.animation = vm.animation

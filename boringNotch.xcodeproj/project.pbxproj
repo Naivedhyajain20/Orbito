@@ -29,6 +29,13 @@
 		NN0000100000000000000002 /* NotchNestSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NN0000100000000000000001 /* NotchNestSettingsView.swift */; };
 		NN0000110000000000000002 /* NotchNestCodingModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NN0000110000000000000001 /* NotchNestCodingModalView.swift */; };
 		CA0000010000000000000002 /* CodingActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000010000000000000001 /* CodingActivityManager.swift */; };
+		LM0000010000000000000002 /* QuickTimerRulerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM0000010000000000000001 /* QuickTimerRulerView.swift */; };
+		LM0000020000000000000002 /* SpacesSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM0000020000000000000001 /* SpacesSyncManager.swift */; };
+		LM0000030000000000000002 /* WeatherForecastWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM0000030000000000000001 /* WeatherForecastWidgetView.swift */; };
+		LM0000040000000000000002 /* PixelPetWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM0000040000000000000001 /* PixelPetWidgetView.swift */; };
+		LM0000050000000000000002 /* FullCoverMusicPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM0000050000000000000001 /* FullCoverMusicPlayerView.swift */; };
+		LM0000060000000000000002 /* QuickDropZonesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM0000060000000000000001 /* QuickDropZonesView.swift */; };
+		LM0000070000000000000002 /* SpaceBackgroundPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM0000070000000000000001 /* SpaceBackgroundPickerView.swift */; };
 		BB1F0001FACE1D01BB1F0001 /* FaceIDGlyphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0001FACE1D01AA1F0001 /* FaceIDGlyphView.swift */; };
 		BB1F0002FACE1D02BB1F0002 /* FaceIDNotchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0002FACE1D02AA1F0002 /* FaceIDNotchView.swift */; };
 		BB1F0003FACE1D03BB1F0003 /* FaceIDManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0003FACE1D03AA1F0003 /* FaceIDManager.swift */; };
@@ -37,6 +44,7 @@
 		BBDE158B137FCD9D97828816 /* ClipboardWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADE158B137FCD9D97828816 /* ClipboardWidgetView.swift */; };
 		BB67C41F2C9B7A06F35A8F23 /* QuickNoteWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA67C41F2C9B7A06F35A8F23 /* QuickNoteWidgetView.swift */; };
 		BB58985938F19FEB2ED5E124 /* FrontScreenSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA58985938F19FEB2ED5E124 /* FrontScreenSettingsView.swift */; };
+		BBCF0E1A2D3B4E8799A1BEEF /* ImageCropPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AACF0E1A2D3B4E8799A1BEEF /* ImageCropPreviewView.swift */; };
 		BB44A2BAF2E8EA42A681C158 /* AIActionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA44A2BAF2E8EA42A681C158 /* AIActionManager.swift */; };
 		BB694B8AD94F6B9C0A2D7117 /* ClipboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA694B8AD94F6B9C0A2D7117 /* ClipboardManager.swift */; };
 		BBB9361408E09D9A2D0792F1 /* NotchModeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB9361408E09D9A2D0792F1 /* NotchModeManager.swift */; };
@@ -257,6 +265,13 @@
 		NN0000100000000000000001 /* NotchNestSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchNestSettingsView.swift; sourceTree = "<group>"; };
 		NN0000110000000000000001 /* NotchNestCodingModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchNestCodingModalView.swift; sourceTree = "<group>"; };
 		CA0000010000000000000001 /* CodingActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodingActivityManager.swift; sourceTree = "<group>"; };
+		LM0000010000000000000001 /* QuickTimerRulerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Timers/QuickTimerRulerView.swift"; sourceTree = "<group>"; };
+		LM0000020000000000000001 /* SpacesSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacesSyncManager.swift; sourceTree = "<group>"; };
+		LM0000030000000000000001 /* WeatherForecastWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Widgets/WeatherForecastWidgetView.swift"; sourceTree = "<group>"; };
+		LM0000040000000000000001 /* PixelPetWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Widgets/PixelPetWidgetView.swift"; sourceTree = "<group>"; };
+		LM0000050000000000000001 /* FullCoverMusicPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullCoverMusicPlayerView.swift; sourceTree = "<group>"; };
+		LM0000060000000000000001 /* QuickDropZonesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickDropZonesView.swift; sourceTree = "<group>"; };
+		LM0000070000000000000001 /* SpaceBackgroundPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceBackgroundPickerView.swift; sourceTree = "<group>"; };
 		AA1F0001FACE1D01AA1F0001 /* FaceIDGlyphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceID/FaceIDGlyphView.swift"; sourceTree = "<group>"; };
 		AA1F0002FACE1D02AA1F0002 /* FaceIDNotchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceID/FaceIDNotchView.swift"; sourceTree = "<group>"; };
 		AA1F0003FACE1D03AA1F0003 /* FaceIDManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceIDManager.swift; sourceTree = "<group>"; };
@@ -265,6 +280,7 @@
 		AADE158B137FCD9D97828816 /* ClipboardWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Widgets/ClipboardWidgetView.swift"; sourceTree = "<group>"; };
 		AA67C41F2C9B7A06F35A8F23 /* QuickNoteWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Widgets/QuickNoteWidgetView.swift"; sourceTree = "<group>"; };
 		AA58985938F19FEB2ED5E124 /* FrontScreenSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FrontScreenSettingsView.swift"; sourceTree = "<group>"; };
+		AACF0E1A2D3B4E8799A1BEEF /* ImageCropPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ImageCropPreviewView.swift"; sourceTree = "<group>"; };
 		AA44A2BAF2E8EA42A681C158 /* AIActionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AIActionManager.swift"; sourceTree = "<group>"; };
 		AA694B8AD94F6B9C0A2D7117 /* ClipboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClipboardManager.swift"; sourceTree = "<group>"; };
 		AAB9361408E09D9A2D0792F1 /* NotchModeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotchModeManager.swift"; sourceTree = "<group>"; };
@@ -615,6 +631,9 @@
 				AA191791BE777F380099E85C /* NotesView.swift */,
 				AA527FF82314473E96CBE9A7 /* SystemInfoView.swift */,
 				AAB6A70696A3C55AC7E736DC /* TimersView.swift */,
+				LM0000010000000000000001 /* QuickTimerRulerView.swift */,
+				LM0000030000000000000001 /* WeatherForecastWidgetView.swift */,
+				LM0000040000000000000001 /* PixelPetWidgetView.swift */,
 				B141C23B2CA5F50900AC8CC8 /* Onboarding */,
 				B1C448992C97375A001F0858 /* Tips */,
 				14C08BB72C8DE49E000F8AA0 /* Calendar */,
@@ -656,6 +675,7 @@
 				B1F0A0012E60000100000001 /* BrightnessManager.swift */,
 				59D8C23B2E589FAA00147B33 /* VolumeManager.swift */,
 				CA0000010000000000000001 /* CodingActivityManager.swift */,
+				LM0000020000000000000001 /* SpacesSyncManager.swift */,
 			);
 			path = managers;
 			sourceTree = "<group>";
@@ -838,6 +858,7 @@
 			children = (
 				B19424082CD0FEFE003E5DC2 /* LottieAnimationView.swift */,
 				147163972C5D35B70068B555 /* MusicVisualizer.swift */,
+				LM0000050000000000000001 /* FullCoverMusicPlayerView.swift */,
 			);
 			path = Music;
 			sourceTree = "<group>";
@@ -851,6 +872,7 @@
 				14D570C52C5F38210011E668 /* BoringHeader.swift */,
 				14D570D12C5F6C6A0011E668 /* BoringExtrasMenu.swift */,
 				1471A8582C6281BD0058408D /* BoringNotchWindow.swift */,
+				LM0000060000000000000001 /* QuickDropZonesView.swift */,
 			);
 			path = Notch;
 			sourceTree = "<group>";
@@ -901,6 +923,8 @@
 				B1D6FD422C6603730015F173 /* SoftwareUpdater.swift */,
 				B1B112902C6A572100093D8F /* EditPanelView.swift */,
 				B1C448972C972CC4001F0858 /* ListItemPopover.swift */,
+				LM0000070000000000000001 /* SpaceBackgroundPickerView.swift */,
+				AACF0E1A2D3B4E8799A1BEEF /* ImageCropPreviewView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -1092,6 +1116,7 @@
 				BBDE158B137FCD9D97828816 /* ClipboardWidgetView.swift in Sources */,
 				BB67C41F2C9B7A06F35A8F23 /* QuickNoteWidgetView.swift in Sources */,
 				BB58985938F19FEB2ED5E124 /* FrontScreenSettingsView.swift in Sources */,
+				BBCF0E1A2D3B4E8799A1BEEF /* ImageCropPreviewView.swift in Sources */,
 				BB44A2BAF2E8EA42A681C158 /* AIActionManager.swift in Sources */,
 				BB694B8AD94F6B9C0A2D7117 /* ClipboardManager.swift in Sources */,
 				BBB9361408E09D9A2D0792F1 /* NotchModeManager.swift in Sources */,
@@ -1138,6 +1163,13 @@
 				NN0000100000000000000002 /* NotchNestSettingsView.swift in Sources */,
 				NN0000110000000000000002 /* NotchNestCodingModalView.swift in Sources */,
 				CA0000010000000000000002 /* CodingActivityManager.swift in Sources */,
+				LM0000010000000000000002 /* QuickTimerRulerView.swift in Sources */,
+				LM0000020000000000000002 /* SpacesSyncManager.swift in Sources */,
+				LM0000030000000000000002 /* WeatherForecastWidgetView.swift in Sources */,
+				LM0000040000000000000002 /* PixelPetWidgetView.swift in Sources */,
+				LM0000050000000000000002 /* FullCoverMusicPlayerView.swift in Sources */,
+				LM0000060000000000000002 /* QuickDropZonesView.swift in Sources */,
+				LM0000070000000000000002 /* SpaceBackgroundPickerView.swift in Sources */,
 				14C08BB92C8DE4B1000F8AA0 /* BoringCalendar.swift in Sources */,
 				5955950D2E900ED800C66711 /* ApplicationRelauncher.swift in Sources */,
 				1100292A2E8691B400035A57 /* FileShareView.swift in Sources */,
@@ -1274,14 +1306,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 271;
+				CURRENT_PROJECT_VERSION = 300;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BoringNotchXPCHelper/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BoringNotchXPCHelper;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.7.3;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch.BoringNotchXPCHelper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1299,14 +1331,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 271;
+				CURRENT_PROJECT_VERSION = 300;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BoringNotchXPCHelper/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BoringNotchXPCHelper;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.7.3;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch.BoringNotchXPCHelper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1453,7 +1485,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 271;
+				CURRENT_PROJECT_VERSION = 300;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"boringNotch/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
@@ -1480,7 +1512,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.7.3;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1507,7 +1539,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 271;
+				CURRENT_PROJECT_VERSION = 300;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"boringNotch/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
@@ -1533,7 +1565,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.7.3;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

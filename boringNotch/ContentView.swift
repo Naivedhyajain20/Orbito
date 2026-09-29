@@ -43,6 +43,10 @@ struct ContentView: View {
     @Default(.glassOpacity) var glassOpacity
     @Default(.backgroundTint) var backgroundTint
     @Default(.frostedBackground) var frostedBackground
+    @Default(.lightingEffect) var lightingEffect
+    @Default(.showDynamicIslandMusicAnimation) var showDynamicIslandMusicAnimation
+    @Default(.enableSpaceBackgrounds) var enableSpaceBackgrounds
+    @ObservedObject private var spacesManager = SpacesSyncManager.shared
 
     // Shared interactive spring for movement/resizing to avoid conflicting animations
     private let animationSpring = Animation.interactiveSpring(response: 0.38, dampingFraction: 0.8, blendDuration: 0)
@@ -84,7 +88,7 @@ struct ContentView: View {
             && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle)
             && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed
         {
-            chinWidth += (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
+            chinWidth += (2 * max(20, vm.effectiveClosedNotchHeight - 8) + 24)
         } else if !coordinator.expandingView.show && vm.notchState == .closed
             && timerManager.hasActiveLiveActivity && !vm.hideOnClosed
         {
@@ -101,47 +105,161 @@ struct ContentView: View {
 
     @ViewBuilder
     private var themeBackground: some View {
+        let activeBackground: NotchBackground = {
+            if enableSpaceBackgrounds {
+                return spacesManager.currentBackground
+            }
+            if Defaults[.globalNotchBackground] == .glass || enableLiquidGlass {
+                return .glass
+            }
+            return Defaults[.globalNotchBackground]
+        }()
+
+        let activeWallpaper: NSImage? = {
+            if enableSpaceBackgrounds {
+                return spacesManager.currentWallpaperImage
+            } else if let path = Defaults[.globalWallpaperPath], !path.isEmpty {
+                return NSImage(contentsOfFile: path)
+            }
+            return nil
+        }()
+
         if vm.notchState == .open {
-            if pureBlackBackground || notchTheme == .darkBlack || notchTheme == .darkSolid {
+            switch activeBackground {
+            case .black:
                 Color.black
-            } else if enableLiquidGlass || notchTheme == .glass {
+            case .glass:
                 ZStack {
                     if frostedBackground {
-                        VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+                        VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
                     }
                     if backgroundTint == "White" {
-                        Color.white.opacity(glassOpacity * 0.35)
+                        Color.white.opacity(glassOpacity * 0.20)
                     } else {
+                        Color.black.opacity(glassOpacity * 0.35)
+                    }
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.18),
+                            Color.white.opacity(0.04),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+                .overlay(
+                    Group {
+                        if lightingEffect {
+                            currentNotchShape
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.40),
+                                            Color.white.opacity(0.12),
+                                            Color.white.opacity(0.04)
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1
+                                )
+                        }
+                    }
+                )
+            case .blackGlass:
+                ZStack {
+                    if frostedBackground {
+                        VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                    }
+                    Color.black.opacity(0.72 * glassOpacity)
+                }
+                .overlay(
+                    Group {
+                        if lightingEffect {
+                            currentNotchShape
+                                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        }
+                    }
+                )
+            case .image:
+                ZStack {
+                    if let path = Defaults[.globalWallpaperPath], !path.isEmpty, !enableSpaceBackgrounds, FileManager.default.fileExists(atPath: path) {
+                        CustomCompanionMediaView(filePath: path, isFill: true)
+                            .clipped()
+                            .overlay(Color.black.opacity(0.3))
+                    } else if let wallpaperImage = activeWallpaper {
+                        Image(nsImage: wallpaperImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .clipped()
+                            .overlay(Color.black.opacity(0.3))
+                    } else {
+                        VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
                         LinearGradient(
                             colors: [
-                                Color(white: 0.14).opacity(glassOpacity * 0.65),
-                                Color(white: 0.04).opacity(glassOpacity * 0.82)
+                                Color(red: 0.22, green: 0.15, blue: 0.35).opacity(0.85),
+                                Color(red: 0.10, green: 0.08, blue: 0.18).opacity(0.92)
                             ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
                     }
                 }
-            } else {
-                switch notchTheme {
-                case .glass:
-                    ZStack {
-                        VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-                        Color.black.opacity(0.65)
-                    }
-                case .darkBlack, .darkSolid:
-                    Color.black
-                case .transparent:
-                    ZStack {
-                        VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-                        Color.black.opacity(0.35)
-                    }
-                case .minimal:
-                    Color.black.opacity(0.88)
+            }
+        } else if activeBackground == .glass || enableLiquidGlass || notchTheme == .glass {
+            ZStack {
+                if frostedBackground {
+                    VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                }
+                if backgroundTint == "White" {
+                    Color.white.opacity(glassOpacity * 0.35)
+                } else {
+                    LinearGradient(
+                        colors: [
+                            Color(white: 0.14).opacity(glassOpacity * 0.65),
+                            Color(white: 0.04).opacity(glassOpacity * 0.82)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 }
             }
+            .overlay(
+                Group {
+                    if lightingEffect {
+                        currentNotchShape
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.35),
+                                        Color.white.opacity(0.10)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 0.8
+                            )
+                    }
+                }
+            )
         } else {
-            Color.black
+            switch notchTheme {
+            case .glass:
+                ZStack {
+                    VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                    Color.black.opacity(0.65)
+                }
+            case .darkBlack, .darkSolid:
+                Color.black
+            case .transparent:
+                ZStack {
+                    VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                    Color.black.opacity(0.35)
+                }
+            case .minimal:
+                Color.black.opacity(0.88)
+            }
         }
     }
 
@@ -346,6 +464,9 @@ struct ContentView: View {
                       } else if coordinator.sneakPeek.show && Defaults[.inlineHUD] && (coordinator.sneakPeek.type != .music) && (coordinator.sneakPeek.type != .battery) && vm.notchState == .closed {
                           InlineHUD(type: $coordinator.sneakPeek.type, value: $coordinator.sneakPeek.value, icon: $coordinator.sneakPeek.icon, hoverAnimation: $isHovering, gestureProgress: $gestureProgress)
                               .transition(.opacity)
+                      } else if !coordinator.expandingView.show && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle) && coordinator.musicLiveActivityEnabled && timerManager.hasActiveLiveActivity && !vm.hideOnClosed {
+                          DualLiveActivity()
+                              .frame(alignment: .center)
                       } else if (!coordinator.expandingView.show || coordinator.expandingView.type == .music) && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle) && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed {
                           MusicLiveActivity()
                               .frame(alignment: .center)
@@ -445,11 +566,11 @@ struct ContentView: View {
             HStack {
                 ZStack {
                     Circle()
-                        .fill(timerManager.liveActivityColor.opacity(0.22))
-                        .frame(width: 18, height: 18)
-                    Image(systemName: timerManager.liveActivityIcon)
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(timerManager.liveActivityColor)
+                        .fill(timerManager.isAlarmRinging ? Color.red.opacity(0.3) : timerManager.liveActivityColor.opacity(0.22))
+                        .frame(width: 20, height: 20)
+                    Image(systemName: timerManager.isAlarmRinging ? "bell.badge.fill" : timerManager.liveActivityIcon)
+                        .font(.system(size: 9.5, weight: .bold))
+                        .foregroundStyle(timerManager.isAlarmRinging ? .red : timerManager.liveActivityColor)
                 }
             }
             .frame(
@@ -463,14 +584,34 @@ struct ContentView: View {
                 .fill(.black)
                 .frame(width: vm.closedNotchSize.width - 20)
 
-            // Right ear: Live ticking text
-            HStack(spacing: 2) {
-                Text(timerManager.liveActivityTimeString)
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(timerManager.liveActivityColor)
-                    .lineLimit(1)
+            // Right ear: Live ticking text + mini progress
+            HStack(spacing: 3) {
+                if timerManager.isAlarmRinging {
+                    Text("ALARM!")
+                        .font(.system(size: 10.5, weight: .heavy))
+                        .foregroundStyle(.red)
+                } else {
+                    VStack(spacing: 1) {
+                        Text(timerManager.liveActivityTimeString)
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundStyle(timerManager.liveActivityColor)
+                            .lineLimit(1)
+                        // Mini progress bar under time
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(timerManager.liveActivityColor.opacity(0.18))
+                                    .frame(height: 2)
+                                Capsule()
+                                    .fill(timerManager.liveActivityColor)
+                                    .frame(width: geo.size.width * timerProgressFraction, height: 2)
+                            }
+                        }
+                        .frame(height: 2)
+                    }
+                }
             }
-            .frame(width: 52, alignment: .center)
+            .frame(width: 56, alignment: .center)
         }
         .frame(
             height: vm.effectiveClosedNotchHeight,
@@ -478,9 +619,91 @@ struct ContentView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            coordinator.currentView = .timers
-            doOpen()
+            if timerManager.isAlarmRinging {
+                timerManager.stopAlarm()
+            } else {
+                coordinator.currentView = .timers
+                doOpen()
+            }
         }
+    }
+
+    @ViewBuilder
+    func DualLiveActivity() -> some View {
+        HStack(spacing: 0) {
+            // Left ear: Music album art or animated visualizer
+            HStack(spacing: 4) {
+                if !musicManager.songTitle.isEmpty {
+                    Image(nsImage: musicManager.albumArt)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 17, height: 17)
+                        .clipShape(Circle())
+                }
+                if showDynamicIslandMusicAnimation {
+                    DynamicIslandWaveformView(
+                        isPlaying: musicManager.isPlaying,
+                        color: Defaults[.coloredSpectrogram]
+                            ? Color(nsColor: musicManager.avgColor)
+                            : Color.white
+                    )
+                } else if useMusicVisualizer {
+                    AudioSpectrumView(isPlaying: $musicManager.isPlaying)
+                        .frame(width: 14, height: 11)
+                }
+            }
+            .frame(width: max(0, vm.effectiveClosedNotchHeight + 8), alignment: .center)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                doOpen()
+            }
+
+            // Center notch mask
+            Rectangle()
+                .fill(.black)
+                .frame(width: vm.closedNotchSize.width - 20)
+
+            // Right ear: Timer countdown pill or Alarm alert
+            HStack(spacing: 3) {
+                if timerManager.isAlarmRinging {
+                    Image(systemName: "bell.badge.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.red)
+                    Text("ALARM")
+                        .font(.system(size: 9.5, weight: .heavy))
+                        .foregroundStyle(.red)
+                } else {
+                    Image(systemName: timerManager.liveActivityIcon)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(timerManager.liveActivityColor)
+                    Text(timerManager.liveActivityTimeString)
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(timerManager.liveActivityColor)
+                        .lineLimit(1)
+                }
+            }
+            .frame(width: 56, alignment: .center)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if timerManager.isAlarmRinging {
+                    timerManager.stopAlarm()
+                } else {
+                    coordinator.currentView = .timers
+                    doOpen()
+                }
+            }
+        }
+        .frame(height: vm.effectiveClosedNotchHeight, alignment: .center)
+    }
+
+    /// Fraction of timer progress for the mini bar in live activity
+    private var timerProgressFraction: CGFloat {
+        if timerManager.pomodoroRunning {
+            return CGFloat(timerManager.pomodoroProgress)
+        } else if let timer = timerManager.timers.first(where: { $0.isRunning }) {
+            return CGFloat(timer.progress)
+        }
+        return 0
     }
 
     @ViewBuilder
@@ -547,7 +770,14 @@ struct ContentView: View {
                 )
 
             HStack {
-                if useMusicVisualizer {
+                if showDynamicIslandMusicAnimation {
+                    DynamicIslandWaveformView(
+                        isPlaying: musicManager.isPlaying,
+                        color: Defaults[.coloredSpectrogram]
+                            ? Color(nsColor: musicManager.avgColor)
+                            : Color.white
+                    )
+                } else if useMusicVisualizer {
                     Rectangle()
                         .fill(
                             Defaults[.coloredSpectrogram]
