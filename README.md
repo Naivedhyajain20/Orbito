@@ -13,6 +13,7 @@
   <b>Elevate your MacBook display into a hyper-responsive, futuristic command island.</b><br>
   Real-time Mach kernel telemetry, 3D Gyroscope Face ID unlock with haptics & Apple Pay audio, intelligent APFS storage breakdown, instant clipboard memory, drag-and-drop file tray, seamless media controller, and screen capture privacy shield — elegantly nestled around your notch.
 </p>
+<a href="https://www.producthunt.com/products/orbito?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-orbito" target="_blank" rel="noopener noreferrer"><img alt="Orbito - The Ultimate Next-Gen Dynamic Notch macOS. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1329655&amp;theme=light&amp;t=1795689488818"></a>
 
 [Download Latest Release](https://github.com/Naivedhyajain20/Orbito/releases) • [Features](#-core-features) • [Installation](#-download--installation) • [Architecture](#-architecture--engineering) • [Privacy](#-privacy--security)
 
